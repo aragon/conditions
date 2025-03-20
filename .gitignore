@@ -1,0 +1,19 @@
+# Compiler files
+cache/
+out/
+
+# Ignores development broadcast logs
+/broadcast/**
+
+# Docs
+docs/
+
+# Dotenv file
+.env
+
+lcov.info*
+report/
+.DS_Store
+
+*.tree
+logs/*

@@ -23,7 +23,7 @@ contract Deploy is Script {
         ConditionFactory factory = new ConditionFactory();
 
         // Result
-        console.log("SelectorCondition factory:", address(factory));
+        console.log("Condition Factory:", address(factory));
         console.log("");
     }
 }

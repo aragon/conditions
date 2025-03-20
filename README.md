@@ -11,6 +11,10 @@ This reposity contains a library of OSx conditions, meant to be used by any DAO 
 
 ## Get Started
 
+See the deployments available on each network on [DEPLOYMENTS.md](./DEPLOYMENTS.md)
+
+## Build
+
 To get started, ensure that [Foundry](https://getfoundry.sh/) and [Make](https://www.gnu.org/software/make/) are installed on your computer.
 
 ### Using the Makefile
@@ -77,11 +81,6 @@ Check the available make targets to simulate and deploy the smart contracts:
 - [ ] The `.env` file contains the correct parameters for the deployment
   - [ ] I have created a brand new burner wallet with `cast wallet new` and copied the private key to `DEPLOYMENT_PRIVATE_KEY` within `.env`
   - [ ] I have reviewed the target network and RPC URL
-  - [ ] I have checked that the JSON file under `MULTISIG_MEMBERS_JSON_FILE_NAME` contains the correct list of signers
-  - The given OSx addresses:
-    - [ ] Exist on the target network
-    - [ ] Contain the latest stable official version of the OSx DAO implementation, the Plugin Setup Processor and the Plugin Repo Factory
-    - [ ] I have verified the values on https://www.npmjs.com/package/@aragon/osx-commons-configs?activeTab=code > `/@aragon/osx-commons-configs/dist/deployments/json/`
 - [ ] All the tests run clean (`make test`)
 - **Target test network**
   - [ ] I have run a preview deployment on the testnet

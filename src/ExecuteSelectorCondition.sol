@@ -15,7 +15,7 @@ contract ExecuteSelectorCondition is
     DaoAuthorizable,
     IPermissionCondition
 {
-    mapping(bytes4 => bool) allowedSelectors;
+    mapping(bytes4 => bool) public allowedSelectors;
 
     bytes32 constant MANAGE_SELECTORS_PERMISSION_ID =
         keccak256("MANAGE_SELECTORS_PERMISSION");

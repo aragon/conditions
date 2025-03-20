@@ -1,0 +1,49 @@
+SelectorConditionTest:
+  - when: deploying the contract
+    then:
+      - it: should set the given DAO
+      - it: should define the given selectors as allowed
+  - when: calling a disallowed function
+    then:
+      - it: should revert
+  - when: calling an allowed function
+    and:
+      - it: should allow execution
+  - when: calling isGranted
+    and:
+      - given: the calldata references a disallowed selector
+        then:
+          - it: should return false
+      - given: the calldata references an allowed selector
+        then:
+          - it: should return true
+  - when: calling addSelector
+    and:
+      - given: the caller has no permission
+        then:
+          - it: should revert
+      - given: the selector is already allowed
+        then:
+          - it: should revert
+      - given: the caller has permission
+        then:
+          - it: should succeed
+          - it: should emit an event
+          - it: allowedSelectors should return true
+  - when: calling removeSelector
+    and:
+      - given: the caller has no permission
+        then:
+          - it: should revert
+      - given: the selector is not allowed
+        then:
+          - it: should revert
+      - given: the caller has permission
+        then:
+          - it: should succeed
+          - it: should emit an event
+          - it: allowedSelectors should return false
+  - when: calling supportsInterface
+    and:
+      - it: does not support the empty interface
+      - it: supports IPermissionCondition

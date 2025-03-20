@@ -2,6 +2,9 @@
 pragma solidity ^0.8.17;
 
 bytes32 constant EXECUTE_PERMISSION_ID = keccak256("EXECUTE_PERMISSION");
+bytes32 constant SET_METADATA_PERMISSION_ID = keccak256(
+    "SET_METADATA_PERMISSION"
+);
 bytes32 constant ROOT_PERMISSION_ID = keccak256("ROOT_PERMISSION");
 
 uint64 constant MAX_UINT64 = uint64(2 ** 64 - 1);

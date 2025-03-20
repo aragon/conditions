@@ -34,6 +34,7 @@ contract DaoBuilder is Test {
         public
         returns (
             DAO dao,
+            ConditionFactory factory,
             ExecuteSelectorCondition executeSelectorCondition,
             SelectorCondition selectorCondition
         )
@@ -45,14 +46,14 @@ contract DaoBuilder is Test {
                     address(DAO_BASE),
                     abi.encodeCall(
                         DAO.initialize,
-                        ("", address(owner), address(0x0), "")
+                        ("", address(this), address(0x0), "")
                     )
                 )
             )
         );
 
         // Deploy conditions
-        ConditionFactory factory = new ConditionFactory();
+        factory = new ConditionFactory();
 
         executeSelectorCondition = ExecuteSelectorCondition(
             factory.deployExecuteSelectorCondition(IDAO(dao), selectors)

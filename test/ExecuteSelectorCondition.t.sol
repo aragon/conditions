@@ -7,7 +7,7 @@ import {DAO} from "@aragon/osx/core/dao/DAO.sol";
 import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
 import {ExecuteSelectorCondition} from "../src/ExecuteSelectorCondition.sol";
 import {ConditionFactory} from "../../src/factory/ConditionFactory.sol";
-import {EXECUTE_PERMISSION_ID, SET_METADATA_PERMISSION_ID} from "./constants.sol";
+import {EXECUTE_PERMISSION_ID, SET_METADATA_PERMISSION_ID, SET_SIGNATURE_VALIDATOR_PERMISSION_ID, REGISTER_STANDARD_CALLBACK_PERMISSION_ID, SET_TRUSTED_FORWARDER_PERMISSION_ID} from "./constants.sol";
 
 contract ExecuteSelectorConditionTest is AragonTest {
     DaoBuilder builder;

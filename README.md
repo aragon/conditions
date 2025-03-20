@@ -35,8 +35,8 @@ Available targets:
 - make check-tests      Checks if solidity files are out of sync
 - make markdown-tests   Generates a markdown file with the test definitions rendered as a tree
 
-- make pre-deploy-testnet        Simulate a deployment to the testnet
-- make pre-deploy-prodnet        Simulate a deployment to the production network
+- make predeploy-testnet        Simulate a deployment to the testnet
+- make predeploy-prodnet        Simulate a deployment to the production network
 
 - make deploy-testnet        Deploy to the testnet and verify
 - make deploy-prodnet        Deploy to the production network and verify
@@ -60,8 +60,8 @@ The env.example file contains descriptions for all the initial settings. You don
 Check the available make targets to simulate and deploy the smart contracts:
 
 ```
-- make pre-deploy-testnet    Simulate a deployment to the defined testnet
-- make pre-deploy-prodnet    Simulate a deployment to the defined production network
+- make predeploy-testnet     Simulate a deployment to the defined testnet
+- make predeploy-prodnet     Simulate a deployment to the defined production network
 - make deploy-testnet        Deploy to the defined testnet network and verify
 - make deploy-prodnet        Deploy to the production network and verify
 ```
@@ -84,7 +84,7 @@ Check the available make targets to simulate and deploy the smart contracts:
 - [ ] All the tests run clean (`make test`)
 - **Target test network**
   - [ ] I have run a preview deployment on the testnet
-    - `make pre-deploy-testnet`
+    - `make predeploy-testnet`
   - [ ] I have deployed my contracts successfully to the target testnet
     - `make deploy-testnet`
   - [ ] I have tested that these contracts work successfully
@@ -95,7 +95,7 @@ Check the available make targets to simulate and deploy the smart contracts:
   - [ ] It exposes no services or ports
   - [ ] The wifi or wired network in use does not expose any ports to a WAN
 - [ ] I have previewed my deploy without any errors
-  - `make pre-deploy-prodnet`
+  - `make predeploy-prodnet`
 - [ ] The deployment wallet has sufficient native token for gas
   - At least, 15% more than the estimated simulation
 - [ ] `make test` still run clean

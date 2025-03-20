@@ -128,13 +128,13 @@ $(TEST_TREE_FILES): $(TEST_SOURCE_FILES)
 
 #### Deployment targets ####
 
-pre-deploy-testnet: export RPC_URL = $(TESTNET_RPC_URL)
-pre-deploy-testnet: export NETWORK = $(TESTNET_NETWORK)
-pre-deploy-prodnet: export RPC_URL = $(PRODNET_RPC_URL)
-pre-deploy-prodnet: export NETWORK = $(PRODNET_NETWORK)
+predeploy-testnet: export RPC_URL = $(TESTNET_RPC_URL)
+predeploy-testnet: export NETWORK = $(TESTNET_NETWORK)
+predeploy-prodnet: export RPC_URL = $(PRODNET_RPC_URL)
+predeploy-prodnet: export NETWORK = $(PRODNET_NETWORK)
 
-pre-deploy-testnet: pre-deploy ## Simulate a deployment to the testnet
-pre-deploy-prodnet: pre-deploy ## Simulate a deployment to the production network
+predeploy-testnet: predeploy ## Simulate a deployment to the testnet
+predeploy-prodnet: predeploy ## Simulate a deployment to the production network
 
 ##
 
@@ -149,8 +149,8 @@ deploy-prodnet: export DEPLOYMENT_LOG_FILE=./deployment-$(patsubst "%",%,$(PRODN
 deploy-testnet: deploy ## Deploy to the testnet and verify
 deploy-prodnet: deploy ## Deploy to the production network and verify
 
-.PHONY: pre-deploy
-pre-deploy:
+.PHONY: predeploy
+predeploy:
 	@echo "Simulating the deployment"
 	forge script $(DEPLOY_SCRIPT) \
 		--chain $(NETWORK) \

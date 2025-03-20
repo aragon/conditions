@@ -1,0 +1,3 @@
+[submodule "lib/osx"]
+	path = lib/osx
+	url = https://github.com/aragon/osx

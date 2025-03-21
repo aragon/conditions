@@ -186,7 +186,13 @@ contract SelectorConditionTest is AragonTest {
         whenCallingIsGranted
     {
         // It should return false
-        vm.skip(true);
+
+        bytes4[] memory selectors = new bytes4[](0);
+        IDAO.Action[] memory actions = new IDAO.Action[](0);
+        selectorCondition = SelectorCondition(
+            factory.deploySelectorCondition(dao, selectors)
+        );
+        bytes memory _calldata = abi.encodeCall(DAO.execute, (0, actions, 0));
     }
 
     function test_GivenTheCalldataReferencesAnAllowedSelector()

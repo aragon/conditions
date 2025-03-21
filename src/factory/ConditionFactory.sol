@@ -11,9 +11,9 @@ import {SelectorCondition} from "../SelectorCondition.sol";
 contract ConditionFactory {
     function deployExecuteSelectorCondition(
         IDAO _dao,
-        bytes4[] memory _initialSelectors
+        ExecuteSelectorCondition.InitialTarget[] memory _initialExecuteTargets
     ) public returns (ExecuteSelectorCondition) {
-        return new ExecuteSelectorCondition(_dao, _initialSelectors);
+        return new ExecuteSelectorCondition(_dao, _initialExecuteTargets);
     }
 
     function deploySelectorCondition(

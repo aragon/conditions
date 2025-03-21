@@ -14,7 +14,8 @@ contract DaoBuilder is Test {
     address immutable DAO_BASE = address(new DAO());
 
     address internal owner = ALICE_ADDRESS;
-    bytes4[] internal selectors;
+    bytes4[] internal initialSelectors;
+    ExecuteSelectorCondition.InitialTarget[] internal initialExecuteTargets;
 
     function withDaoOwner(address newOwner) public returns (DaoBuilder) {
         owner = newOwner;
@@ -22,9 +23,27 @@ contract DaoBuilder is Test {
     }
 
     function withSelectors(
-        bytes4[] memory _selectors
+        bytes4[] memory _initialSelectors
     ) public returns (DaoBuilder) {
-        selectors = _selectors;
+        initialSelectors = _initialSelectors;
+        return this;
+    }
+
+    function withInitialExecuteTargets(
+        ExecuteSelectorCondition.InitialTarget[] memory _initialExecuteTargets
+    ) public returns (DaoBuilder) {
+        for (uint256 i; i < _initialExecuteTargets.length; ) {
+            initialExecuteTargets.push(
+                ExecuteSelectorCondition.InitialTarget(
+                    _initialExecuteTargets[i].selector,
+                    _initialExecuteTargets[i].target
+                )
+            );
+
+            unchecked {
+                i++;
+            }
+        }
         return this;
     }
 
@@ -56,10 +75,13 @@ contract DaoBuilder is Test {
         factory = new ConditionFactory();
 
         executeSelectorCondition = ExecuteSelectorCondition(
-            factory.deployExecuteSelectorCondition(IDAO(dao), selectors)
+            factory.deployExecuteSelectorCondition(
+                IDAO(dao),
+                initialExecuteTargets
+            )
         );
         selectorCondition = SelectorCondition(
-            factory.deploySelectorCondition(IDAO(dao), selectors)
+            factory.deploySelectorCondition(IDAO(dao), initialSelectors)
         );
 
         // Transfer ownership to the owner

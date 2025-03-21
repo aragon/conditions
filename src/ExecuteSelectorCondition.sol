@@ -15,7 +15,13 @@ contract ExecuteSelectorCondition is
     DaoAuthorizable,
     IPermissionCondition
 {
-    mapping(bytes4 => bool) public allowedSelectors;
+    struct InitialTarget {
+        bytes4 selector;
+        address target;
+    }
+    /// @notice Stores whether the given address and selector are allowed
+    /// @dev allowedTargets[where][selector]
+    mapping(address => mapping(bytes4 => bool)) public allowedTargets;
 
     bytes32 constant MANAGE_SELECTORS_PERMISSION_ID =
         keccak256("MANAGE_SELECTORS_PERMISSION");
@@ -23,16 +29,18 @@ contract ExecuteSelectorCondition is
     error AlreadyAllowed();
     error AlreadyDisallowed();
 
-    event SelectorAllowed(bytes4 selector);
-    event SelectorDisallowed(bytes4 selector);
+    event SelectorAllowed(bytes4 selector, address target);
+    event SelectorDisallowed(bytes4 selector, address target);
 
     /// @notice Disables the initializers on the implementation contract to prevent it from being left uninitialized.
     constructor(
         IDAO _dao,
-        bytes4[] memory _initialSelectors
+        InitialTarget[] memory _initialTargets
     ) DaoAuthorizable(_dao) {
-        for (uint256 i; i < _initialSelectors.length; ) {
-            allowedSelectors[_initialSelectors[i]] = true;
+        for (uint256 i; i < _initialTargets.length; ) {
+            allowedTargets[_initialTargets[i].target][
+                _initialTargets[i].selector
+            ] = true;
             unchecked {
                 i++;
             }
@@ -41,24 +49,28 @@ contract ExecuteSelectorCondition is
 
     /// @notice Marks the given selector as allowed
     /// @param _selector The function selector to start allowing
+    /// @param _target The target address where the selector can be invoked
     function allowSelector(
-        bytes4 _selector
+        bytes4 _selector,
+        address _target
     ) public auth(MANAGE_SELECTORS_PERMISSION_ID) {
-        if (allowedSelectors[_selector]) revert AlreadyAllowed();
-        allowedSelectors[_selector] = true;
+        if (allowedTargets[_target][_selector]) revert AlreadyAllowed();
+        allowedTargets[_target][_selector] = true;
 
-        emit SelectorAllowed(_selector);
+        emit SelectorAllowed(_selector, _target);
     }
 
     /// @notice Marks the given selector as disallowed
     /// @param _selector The function selector to stop allowing
+    /// @param _target The target address where the selector can no longer be invoked
     function disallowSelector(
-        bytes4 _selector
+        bytes4 _selector,
+        address _target
     ) public auth(MANAGE_SELECTORS_PERMISSION_ID) {
-        if (!allowedSelectors[_selector]) revert AlreadyDisallowed();
-        allowedSelectors[_selector] = false;
+        if (!allowedTargets[_target][_selector]) revert AlreadyDisallowed();
+        allowedTargets[_target][_selector] = false;
 
-        emit SelectorDisallowed(_selector);
+        emit SelectorDisallowed(_selector, _target);
     }
 
     /// @inheritdoc IPermissionCondition
@@ -81,7 +93,8 @@ contract ExecuteSelectorCondition is
             (bytes32, IDAO.Action[], uint256)
         );
         for (uint256 i; i < _actions.length; ) {
-            if (!allowedSelectors[_getSelector(_actions[i].data)]) return false;
+            if (!allowedTargets[_actions[i].to][_getSelector(_actions[i].data)])
+                return false;
             unchecked {
                 i++;
             }

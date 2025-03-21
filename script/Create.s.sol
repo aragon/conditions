@@ -24,11 +24,15 @@ contract Create is Script {
         console.log("Chain ID:", block.chainid);
         console.log("");
 
+        ExecuteSelectorCondition.InitialTarget[]
+            memory initialTargets = new ExecuteSelectorCondition.InitialTarget[](
+                0
+            );
         bytes4[] memory selectors = new bytes4[](0);
 
         ExecuteSelectorCondition esc = new ExecuteSelectorCondition(
             dao,
-            selectors
+            initialTargets
         );
         SelectorCondition sc = new SelectorCondition(dao, selectors);
 

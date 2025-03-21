@@ -22,17 +22,21 @@ contract Deploy is Script {
         console.log("Chain ID:", block.chainid);
         console.log("");
 
-        // Deploy 2 dummy instances to force verifying the source
+        // The factory
+        ConditionFactory factory = new ConditionFactory();
+
+        // Deploy dummy instances to force verifying the source
         ExecuteSelectorCondition.InitialTarget[]
             memory initialTargets = new ExecuteSelectorCondition.InitialTarget[](
                 0
             );
         bytes4[] memory selectors = new bytes4[](0);
-        new ExecuteSelectorCondition(IDAO(address(0)), initialTargets);
-        new SelectorCondition(IDAO(address(0)), selectors);
 
-        // The factory
-        ConditionFactory factory = new ConditionFactory();
+        factory.deployExecuteSelectorCondition(
+            IDAO(address(0)),
+            initialTargets
+        );
+        factory.deploySelectorCondition(IDAO(address(0)), selectors);
 
         // Result
         console.log("Condition Factory:", address(factory));

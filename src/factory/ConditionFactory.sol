@@ -12,14 +12,14 @@ contract ConditionFactory {
     function deployExecuteSelectorCondition(
         IDAO _dao,
         bytes4[] memory _initialSelectors
-    ) public returns (address) {
-        return address(new ExecuteSelectorCondition(_dao, _initialSelectors));
+    ) public returns (ExecuteSelectorCondition) {
+        return new ExecuteSelectorCondition(_dao, _initialSelectors);
     }
 
     function deploySelectorCondition(
         IDAO _dao,
         bytes4[] memory _initialSelectors
-    ) public returns (address) {
-        return address(new SelectorCondition(_dao, _initialSelectors));
+    ) public returns (SelectorCondition) {
+        return new SelectorCondition(_dao, _initialSelectors);
     }
 }

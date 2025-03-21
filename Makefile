@@ -8,10 +8,10 @@ SHELL:=/bin/bash
 # RULE SPECIFIC ENV VARS [optional]
 
 # Override the verifier and block explorer parameters (network dependent)
-deploy-testnet: export ETHERSCAN_API_KEY_PARAM = --etherscan-api-key $(ETHERSCAN_API_KEY)
-deploy-prodnet: export ETHERSCAN_API_KEY_PARAM = --etherscan-api-key $(ETHERSCAN_API_KEY)
-# deploy-testnet: export VERIFIER_TYPE_PARAM = --verifier blockscout
-# deploy-testnet: export VERIFIER_URL_PARAM = --verifier-url "https://server/api\?"
+%-testnet: export ETHERSCAN_API_KEY_PARAM = --etherscan-api-key $(ETHERSCAN_API_KEY)
+%-prodnet: export ETHERSCAN_API_KEY_PARAM = --etherscan-api-key $(ETHERSCAN_API_KEY)
+# %-testnet: export VERIFIER_TYPE_PARAM = --verifier blockscout
+# %-testnet: export VERIFIER_URL_PARAM = --verifier-url "https://server/api\?"
 
 # CONSTANTS
 
@@ -19,12 +19,14 @@ SOLIDITY_VERSION=0.8.17
 TEST_TREE_MARKDOWN=TEST_TREE.md
 MAKEFILE=Makefile
 DEPLOY_SCRIPT:=script/Deploy.s.sol:Deploy
+CREATE_SCRIPT:=script/Create.s.sol:Create
 MAKE_TEST_TREE_CMD=deno run ./test/script/make-test-tree.ts
 VERBOSITY:=-vvv
 
 TEST_COVERAGE_SRC_FILES:=$(wildcard test/*.sol test/**/*.sol src/*.sol src/**/*.sol src/libs/ProxyLib.sol)
-TEST_SOURCE_FILES=$(wildcard test/*.t.yaml test/integration/*.t.yaml)
+TEST_SOURCE_FILES = $(wildcard test/*.t.yaml test/integration/*.t.yaml)
 TEST_TREE_FILES = $(TEST_SOURCE_FILES:.t.yaml=.tree)
+DEPLOYMENT_ADDRESS = $(shell cast wallet address --private-key $(DEPLOYMENT_PRIVATE_KEY))
 
 # TARGETS
 
@@ -126,44 +128,43 @@ $(TEST_TREE_FILES): $(TEST_SOURCE_FILES)
 	cp .env.example .env
 	@echo "NOTE: Edit the correct values of .env before you continue"
 
-#### Deployment targets ####
-
-predeploy-testnet: export RPC_URL = $(TESTNET_RPC_URL)
-predeploy-testnet: export NETWORK = $(TESTNET_NETWORK)
-predeploy-prodnet: export RPC_URL = $(PRODNET_RPC_URL)
-predeploy-prodnet: export NETWORK = $(PRODNET_NETWORK)
-
-predeploy-testnet: predeploy ## Simulate a deployment to the testnet
-predeploy-prodnet: predeploy ## Simulate a deployment to the production network
-
 ##
 
-deploy-testnet: export RPC_URL = $(TESTNET_RPC_URL)
-deploy-testnet: export NETWORK = $(TESTNET_NETWORK)
-deploy-prodnet: export RPC_URL = $(PRODNET_RPC_URL)
-deploy-prodnet: export NETWORK = $(PRODNET_NETWORK)
+#### Deployment targets ####
 
-deploy-testnet: export DEPLOYMENT_LOG_FILE=./deployment-$(patsubst "%",%,$(TESTNET_NETWORK))-$(shell date +"%y-%m-%d-%H-%M").log
-deploy-prodnet: export DEPLOYMENT_LOG_FILE=./deployment-$(patsubst "%",%,$(PRODNET_NETWORK))-$(shell date +"%y-%m-%d-%H-%M").log
+%-testnet: export RPC_URL = $(TESTNET_RPC_URL)
+%-testnet: export NETWORK = $(TESTNET_NETWORK)
+%-prodnet: export RPC_URL = $(PRODNET_RPC_URL)
+%-prodnet: export NETWORK = $(PRODNET_NETWORK)
 
-deploy-testnet: deploy ## Deploy to the testnet and verify
-deploy-prodnet: deploy ## Deploy to the production network and verify
+predeploy-testnet: predeploy-factory ## Simulate a factory deployment to the testnet
+predeploy-prodnet: predeploy-factory ## Simulate a factory deployment to the production network
 
-.PHONY: predeploy
-predeploy:
+deploy-testnet: export DEPLOYMENT_LOG_FILE=deployment-$(patsubst "%",%,$(TESTNET_NETWORK))-$(shell date +"%y-%m-%d-%H-%M").log
+deploy-prodnet: export DEPLOYMENT_LOG_FILE=deployment-$(patsubst "%",%,$(PRODNET_NETWORK))-$(shell date +"%y-%m-%d-%H-%M").log
+create-testnet: export CREATE_LOG_FILE=creation-$(patsubst "%",%,$(TESTNET_NETWORK))-$(shell date +"%y-%m-%d-%H-%M").log
+create-prodnet: export CREATE_LOG_FILE=creation-$(patsubst "%",%,$(PRODNET_NETWORK))-$(shell date +"%y-%m-%d-%H-%M").log
+
+deploy-testnet: deploy-factory ## Deploy the factory to the testnet and verify
+deploy-prodnet: deploy-factory ## Deploy the factory to the production network and verify
+
+.PHONY: predeploy-factory
+predeploy-factory:
 	@echo "Simulating the deployment"
 	forge script $(DEPLOY_SCRIPT) \
 		--chain $(NETWORK) \
 		--rpc-url $(RPC_URL) \
 		$(VERBOSITY)
 
-.PHONY: deploy
-deploy: test
+.PHONY: deploy-factory
+deploy-factory: test
 	@echo "Starting the deployment"
 	@mkdir -p logs/
 	forge script $(DEPLOY_SCRIPT) \
 		--chain $(NETWORK) \
 		--rpc-url $(RPC_URL) \
+		--retries 10 \
+		--delay 8 \
 		--broadcast \
 		--verify \
 		$(VERIFIER_TYPE_PARAM) \
@@ -173,7 +174,37 @@ deploy: test
 
 ##
 
-refund: export DEPLOYMENT_ADDRESS = $(shell cast wallet address --private-key $(DEPLOYMENT_PRIVATE_KEY))
+precreate-testnet: precreate ## Simulate running Create.s.sol on the testnet
+precreate-prodnet: precreate ## Simulate running Create.s.sol on the prodnet
+
+create-testnet: create ## Run Create.s.sol on the testnet
+create-prodnet: create ## Run Create.s.sol on the prodnet
+
+.PHONY: precreate
+precreate:
+	@echo "Simulating condition creation"
+	forge script $(CREATE_SCRIPT) \
+		--chain $(NETWORK) \
+		--rpc-url $(RPC_URL) \
+		$(VERBOSITY)
+
+.PHONY: create
+create: test
+	@echo "Creating condition(s)"
+	@mkdir -p logs/
+	forge script $(CREATE_SCRIPT) \
+		--chain $(NETWORK) \
+		--rpc-url $(RPC_URL) \
+		--retries 10 \
+		--delay 8 \
+		--broadcast \
+		--verify \
+		$(VERIFIER_TYPE_PARAM) \
+		$(VERIFIER_URL_PARAM) \
+		$(ETHERSCAN_API_KEY_PARAM) \
+		$(VERBOSITY) | tee logs/$(CREATE_LOG_FILE)
+
+##
 
 .PHONY: refund
 refund: ## Refund the remaining balance left on the deployment account

@@ -12,11 +12,15 @@ ExecuteSelectorConditionTest
 ├── When calling execute
 │   ├── Given not all actions are allowed
 │   │   └── It should revert
+│   ├── Given not all targets are allowed
+│   │   └── It should revert
 │   └── Given all actions are allowed
 │       └── It should allow execution
 ├── When calling isGranted
 │   ├── Given not all actions are allowed 2
 │   │   └── It should return false
+│   ├── Given not all targets are allowed 2
+│   │   └── It return false
 │   └── Given all actions are allowed 2
 │       └── It should return true
 ├── When calling addSelector

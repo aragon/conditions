@@ -11,6 +11,9 @@ ExecuteSelectorConditionTest:
       - given: not all actions are allowed
         then:
           - it: should revert
+      - given: not all targets are allowed
+        then:
+          - it: should revert
       - given: all actions are allowed
         then:
           - it: should allow execution
@@ -19,6 +22,9 @@ ExecuteSelectorConditionTest:
       - given: not all actions are allowed
         then:
           - it: should return false
+      - given: not all targets are allowed
+        then:
+          - it: return false
       - given: all actions are allowed
         then:
           - it: should return true

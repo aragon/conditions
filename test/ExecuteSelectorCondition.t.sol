@@ -326,6 +326,13 @@ contract ExecuteSelectorConditionTest is AragonTest {
         dao.execute(bytes32(uint256(2)), _actions, 0);
     }
 
+    function test_RevertGiven_NotAllTargetsAreAllowed()
+        external
+        whenCallingExecute
+    {
+        // It should revert
+    }
+
     function test_GivenAllActionsAreAllowed() external whenCallingExecute {
         // It should allow execution
 
@@ -399,132 +406,135 @@ contract ExecuteSelectorConditionTest is AragonTest {
     {
         // It should return false
 
+        // No selectors allowed yet
+        ExecuteSelectorCondition.InitialTarget[]
+            memory _targets = new ExecuteSelectorCondition.InitialTarget[](0);
+        executeSelectorCondition = ExecuteSelectorCondition(
+            factory.deployExecuteSelectorCondition(dao, _targets)
+        );
+
+        IDAO.Action[] memory _actions = new IDAO.Action[](0);
+
+        // 1 no actions
+        bytes memory _calldata = abi.encodeCall(
+            DAO.execute,
+            (bytes32(uint256(1)), _actions, 0)
+        );
+        vm.assertTrue(
+            executeSelectorCondition.isGranted(
+                address(0),
+                address(0),
+                bytes32(0),
+                _calldata
+            )
+        );
+
+        // 2 all out
+        _actions = new IDAO.Action[](4);
+        _actions[0].data = abi.encodeCall(DAO.setMetadata, ("hi"));
+        _actions[0].to = address(dao);
+        _actions[1].data = abi.encodeCall(DAO.setSignatureValidator, (bob));
+        _actions[1].to = address(dao);
+        _actions[2].data = abi.encodeCall(
+            DAO.registerStandardCallback,
+            (bytes4(uint32(1)), bytes4(uint32(2)), bytes4(uint32(3)))
+        );
+        _actions[2].to = address(dao);
+        _actions[3].data = abi.encodeCall(DAO.setTrustedForwarder, (carol));
+        _actions[3].to = address(dao);
+
+        _calldata = abi.encodeCall(
+            DAO.execute,
+            (bytes32(uint256(1)), _actions, 0)
+        );
+        vm.assertFalse(
+            executeSelectorCondition.isGranted(
+                address(0),
+                address(0),
+                bytes32(0),
+                _calldata
+            )
+        );
+
+        // 3 some out
+        _targets = new ExecuteSelectorCondition.InitialTarget[](1);
+        _targets[0].selector = DAO.setMetadata.selector;
+        _targets[0].target = address(dao);
+
+        executeSelectorCondition = ExecuteSelectorCondition(
+            factory.deployExecuteSelectorCondition(dao, _targets)
+        );
+
+        _calldata = abi.encodeCall(
+            DAO.execute,
+            (bytes32(uint256(1)), _actions, 0)
+        );
+        vm.assertFalse(
+            executeSelectorCondition.isGranted(
+                address(0),
+                address(0),
+                bytes32(0),
+                _calldata
+            )
+        );
+
+        // 4 some still out
+        _targets = new ExecuteSelectorCondition.InitialTarget[](2);
+        _targets[0].selector = DAO.setMetadata.selector;
+        _targets[0].target = address(dao);
+        _targets[1].selector = DAO.setSignatureValidator.selector;
+        _targets[1].target = address(dao);
+
+        executeSelectorCondition = ExecuteSelectorCondition(
+            factory.deployExecuteSelectorCondition(dao, _targets)
+        );
+
+        _calldata = abi.encodeCall(
+            DAO.execute,
+            (bytes32(uint256(1)), _actions, 0)
+        );
+        vm.assertFalse(
+            executeSelectorCondition.isGranted(
+                address(0),
+                address(0),
+                bytes32(0),
+                _calldata
+            )
+        );
+
+        // 5 still one left
+        _targets = new ExecuteSelectorCondition.InitialTarget[](3);
+        _targets[0].selector = DAO.setMetadata.selector;
+        _targets[0].target = address(dao);
+        _targets[1].selector = DAO.setSignatureValidator.selector;
+        _targets[1].target = address(dao);
+        _targets[2].selector = DAO.registerStandardCallback.selector;
+        _targets[2].target = address(dao);
+
+        executeSelectorCondition = ExecuteSelectorCondition(
+            factory.deployExecuteSelectorCondition(dao, _targets)
+        );
+
+        _calldata = abi.encodeCall(
+            DAO.execute,
+            (bytes32(uint256(1)), _actions, 0)
+        );
+        vm.assertFalse(
+            executeSelectorCondition.isGranted(
+                address(0),
+                address(0),
+                bytes32(0),
+                _calldata
+            )
+        );
+    }
+
+    function test_GivenNotAllTargetsAreAllowed2()
+        external
+        whenCallingIsGranted
+    {
+        // It return false
         vm.skip(true);
-
-        // // No selectors allowed yet
-        // bytes4[] memory _targets = new bytes4[](0);
-        // executeSelectorCondition = ExecuteSelectorCondition(
-        //     factory.deployExecuteSelectorCondition(dao, _targets)
-        // );
-
-        // IDAO.Action[] memory _actions = new IDAO.Action[](0);
-
-        // // 1 no actions
-        // bytes memory _calldata = abi.encodeCall(DAO.execute, (bytes32(uint256(1)), _actions, 0));
-        // vm.assertTrue(executeSelectorCondition.isGranted(address(0), address(0), bytes32(0), _calldata));
-
-        // // 2 all out
-        // _actions = new IDAO.Action[](4);
-        // _actions[0].data = abi.encodeCall(DAO.setMetadata, ("hi"));
-        // _actions[0].to = address(dao);
-        // _actions[1].data = abi.encodeCall(DAO.setSignatureValidator, (bob));
-        // _actions[1].to = address(dao);
-        // _actions[2].data = abi.encodeCall(
-        //     DAO.registerStandardCallback,
-        //     (bytes4(uint32(1)), bytes4(uint32(2)), bytes4(uint32(3)))
-        // );
-        // _actions[2].to = address(dao);
-        // _actions[3].data = abi.encodeCall(DAO.setTrustedForwarder, (carol));
-        // _actions[3].to = address(dao);
-
-        // _calldata = abi.encodeCall(DAO.execute, (bytes32(uint256(1)), _actions, 0));
-        // vm.assertFalse(executeSelectorCondition.isGranted(address(0), address(0), bytes32(0), _calldata));
-
-        // // 3 some out
-        // {
-        //     vm.startPrank(alice);
-        //     dao.revoke(address(dao), bob, EXECUTE_PERMISSION_ID);
-
-        //     _targets = new bytes4[](1);
-        //     _targets[0] = DAO.setMetadata.selector;
-
-        //     executeSelectorCondition = ExecuteSelectorCondition(
-        //         factory.deployExecuteSelectorCondition(dao, _targets)
-        //     );
-        //     dao.grantWithCondition(
-        //         address(dao),
-        //         bob,
-        //         EXECUTE_PERMISSION_ID,
-        //         executeSelectorCondition
-        //     );
-
-        //     vm.startPrank(bob);
-        // }
-
-        // vm.expectRevert(
-        //     abi.encodeWithSelector(
-        //         PermissionManager.Unauthorized.selector,
-        //         address(dao),
-        //         address(bob),
-        //         EXECUTE_PERMISSION_ID
-        //     )
-        // );
-        // dao.execute(bytes32(uint256(2)), _actions, 0);
-
-        // // 4 some still out
-        // {
-        //     vm.startPrank(alice);
-        //     dao.revoke(address(dao), bob, EXECUTE_PERMISSION_ID);
-
-        //     _targets = new bytes4[](2);
-        //     _targets[0] = DAO.setMetadata.selector;
-        //     _targets[1] = DAO.setSignatureValidator.selector;
-
-        //     executeSelectorCondition = ExecuteSelectorCondition(
-        //         factory.deployExecuteSelectorCondition(dao, _targets)
-        //     );
-        //     dao.grantWithCondition(
-        //         address(dao),
-        //         bob,
-        //         EXECUTE_PERMISSION_ID,
-        //         executeSelectorCondition
-        //     );
-
-        //     vm.startPrank(bob);
-        // }
-
-        // vm.expectRevert(
-        //     abi.encodeWithSelector(
-        //         PermissionManager.Unauthorized.selector,
-        //         address(dao),
-        //         address(bob),
-        //         EXECUTE_PERMISSION_ID
-        //     )
-        // );
-        // dao.execute(bytes32(uint256(2)), _actions, 0);
-
-        // // 5 still one left
-        // {
-        //     vm.startPrank(alice);
-        //     dao.revoke(address(dao), bob, EXECUTE_PERMISSION_ID);
-
-        //     _targets = new bytes4[](3);
-        //     _targets[0] = DAO.setMetadata.selector;
-        //     _targets[1] = DAO.setSignatureValidator.selector;
-        //     _targets[2] = DAO.registerStandardCallback.selector;
-
-        //     executeSelectorCondition = ExecuteSelectorCondition(
-        //         factory.deployExecuteSelectorCondition(dao, _targets)
-        //     );
-        //     dao.grantWithCondition(
-        //         address(dao),
-        //         bob,
-        //         EXECUTE_PERMISSION_ID,
-        //         executeSelectorCondition
-        //     );
-
-        //     vm.startPrank(bob);
-        // }
-
-        // vm.expectRevert(
-        //     abi.encodeWithSelector(
-        //         PermissionManager.Unauthorized.selector,
-        //         address(dao),
-        //         address(bob),
-        //         EXECUTE_PERMISSION_ID
-        //     )
-        // );
-        // dao.execute(bytes32(uint256(2)), _actions, 0);
     }
 
     function test_GivenAllActionsAreAllowed2() external whenCallingIsGranted {

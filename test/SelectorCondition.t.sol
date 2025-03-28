@@ -205,13 +205,13 @@ contract SelectorConditionTest is AragonTest {
         vm.skip(true);
     }
 
-    modifier whenCallingAddSelector() {
+    modifier whenCallingAllowSelector() {
         _;
     }
 
     function test_RevertGiven_TheCallerHasNoPermission()
         external
-        whenCallingAddSelector
+        whenCallingAllowSelector
     {
         // It should revert
         vm.skip(true);
@@ -219,7 +219,7 @@ contract SelectorConditionTest is AragonTest {
 
     function test_RevertGiven_TheSelectorIsAlreadyAllowed()
         external
-        whenCallingAddSelector
+        whenCallingAllowSelector
     {
         // It should revert
         vm.skip(true);
@@ -227,7 +227,7 @@ contract SelectorConditionTest is AragonTest {
 
     function test_GivenTheCallerHasPermission()
         external
-        whenCallingAddSelector
+        whenCallingAllowSelector
     {
         // It should succeed
         // It should emit an event

@@ -17,7 +17,7 @@ SelectorConditionTest:
       - given: the calldata references an allowed selector
         then:
           - it: should return true
-  - when: calling addSelector
+  - when: calling allowSelector
     and:
       - given: the caller has no permission
         then:

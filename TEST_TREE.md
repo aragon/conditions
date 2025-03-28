@@ -23,7 +23,7 @@ ExecuteSelectorConditionTest
 │   │   └── It return false
 │   └── Given all actions are allowed 2
 │       └── It should return true
-├── When calling addSelector
+├── When calling allowSelector
 │   ├── Given the caller has no permission
 │   │   └── It should revert
 │   ├── Given the selector is already allowed
@@ -60,7 +60,7 @@ SelectorConditionTest
 │   │   └── It should return false
 │   └── Given the calldata references an allowed selector
 │       └── It should return true
-├── When calling addSelector
+├── When calling allowSelector
 │   ├── Given the caller has no permission
 │   │   └── It should revert
 │   ├── Given the selector is already allowed
@@ -82,4 +82,3 @@ SelectorConditionTest
     ├── It does not support the empty interface
     └── It supports IPermissionCondition
 ```
-

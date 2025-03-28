@@ -6,9 +6,10 @@ import {DaoBuilder} from "./helpers/DaoBuilder.sol";
 import {DAO} from "@aragon/osx/core/dao/DAO.sol";
 import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
 import {PermissionManager} from "@aragon/osx/core/permission/PermissionManager.sol";
+import {DaoUnauthorized} from "@aragon/osx/core/utils/auth.sol";
 import {ExecuteSelectorCondition} from "../src/ExecuteSelectorCondition.sol";
 import {ConditionFactory} from "../../src/factory/ConditionFactory.sol";
-import {EXECUTE_PERMISSION_ID, SET_METADATA_PERMISSION_ID, SET_SIGNATURE_VALIDATOR_PERMISSION_ID, REGISTER_STANDARD_CALLBACK_PERMISSION_ID, SET_TRUSTED_FORWARDER_PERMISSION_ID} from "./constants.sol";
+import {EXECUTE_PERMISSION_ID, SET_METADATA_PERMISSION_ID, SET_SIGNATURE_VALIDATOR_PERMISSION_ID, REGISTER_STANDARD_CALLBACK_PERMISSION_ID, SET_TRUSTED_FORWARDER_PERMISSION_ID, MANAGE_SELECTORS_PERMISSION_ID} from "./constants.sol";
 
 contract ExecuteSelectorConditionTest is AragonTest {
     DaoBuilder builder;
@@ -919,34 +920,133 @@ contract ExecuteSelectorConditionTest is AragonTest {
         );
     }
 
-    modifier whenCallingAddSelector() {
+    modifier whenCallingAllowSelector() {
         _;
     }
 
     function test_RevertGiven_TheCallerHasNoPermission()
         external
-        whenCallingAddSelector
+        whenCallingAllowSelector
     {
         // It should revert
-        vm.skip(true);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                DaoUnauthorized.selector,
+                address(dao),
+                address(executeSelectorCondition),
+                address(alice),
+                MANAGE_SELECTORS_PERMISSION_ID
+            )
+        );
+        executeSelectorCondition.allowSelector(
+            bytes4(uint32(1)),
+            address(this)
+        );
+
+        vm.startPrank(bob);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                DaoUnauthorized.selector,
+                address(dao),
+                address(executeSelectorCondition),
+                address(bob),
+                MANAGE_SELECTORS_PERMISSION_ID
+            )
+        );
+        executeSelectorCondition.allowSelector(
+            bytes4(uint32(1)),
+            address(this)
+        );
+
+        vm.startPrank(carol);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                DaoUnauthorized.selector,
+                address(dao),
+                address(executeSelectorCondition),
+                address(carol),
+                MANAGE_SELECTORS_PERMISSION_ID
+            )
+        );
+        executeSelectorCondition.allowSelector(
+            bytes4(uint32(1)),
+            address(this)
+        );
+
+        // Now grant it
+        vm.startPrank(alice);
+        dao.grant(
+            address(executeSelectorCondition),
+            bob,
+            MANAGE_SELECTORS_PERMISSION_ID
+        );
+
+        vm.startPrank(bob);
+        executeSelectorCondition.allowSelector(
+            bytes4(uint32(1)),
+            address(this)
+        );
     }
 
     function test_RevertGiven_TheSelectorIsAlreadyAllowed()
         external
-        whenCallingAddSelector
+        whenCallingAllowSelector
     {
         // It should revert
-        vm.skip(true);
+
+        dao.grant(
+            address(executeSelectorCondition),
+            bob,
+            MANAGE_SELECTORS_PERMISSION_ID
+        );
+
+        // OK
+        vm.startPrank(bob);
+        executeSelectorCondition.allowSelector(
+            bytes4(uint32(1)),
+            address(this)
+        );
+
+        // KO
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ExecuteSelectorCondition.AlreadyAllowed.selector
+            )
+        );
+        executeSelectorCondition.allowSelector(
+            bytes4(uint32(1)),
+            address(this)
+        );
     }
 
     function test_GivenTheCallerHasPermission()
         external
-        whenCallingAddSelector
+        whenCallingAllowSelector
     {
         // It should succeed
         // It should emit an event
         // It allowedTargets should return true
-        vm.skip(true);
+
+        dao.grant(
+            address(executeSelectorCondition),
+            bob,
+            MANAGE_SELECTORS_PERMISSION_ID
+        );
+
+        vm.startPrank(bob);
+        executeSelectorCondition.allowSelector(
+            DAO.setMetadata.selector,
+            address(dao)
+        );
+        executeSelectorCondition.allowSelector(
+            DAO.execute.selector,
+            address(dao)
+        );
+        executeSelectorCondition.allowSelector(
+            ExecuteSelectorCondition.allowSelector.selector,
+            address(executeSelectorCondition)
+        );
     }
 
     modifier whenCallingRemoveSelector() {
@@ -958,7 +1058,71 @@ contract ExecuteSelectorConditionTest is AragonTest {
         whenCallingRemoveSelector
     {
         // It should revert
-        vm.skip(true);
+
+        dao.grant(
+            address(executeSelectorCondition),
+            alice,
+            MANAGE_SELECTORS_PERMISSION_ID
+        );
+        executeSelectorCondition.allowSelector(
+            DAO.execute.selector,
+            address(dao)
+        );
+        executeSelectorCondition.allowSelector(
+            DAO.setMetadata.selector,
+            address(dao)
+        );
+        dao.revoke(
+            address(executeSelectorCondition),
+            alice,
+            MANAGE_SELECTORS_PERMISSION_ID
+        );
+
+        // Try to remove
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                DaoUnauthorized.selector,
+                address(dao),
+                address(executeSelectorCondition),
+                address(alice),
+                MANAGE_SELECTORS_PERMISSION_ID
+            )
+        );
+        executeSelectorCondition.disallowSelector(
+            DAO.execute.selector,
+            address(dao)
+        );
+
+        vm.startPrank(bob);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                DaoUnauthorized.selector,
+                address(dao),
+                address(executeSelectorCondition),
+                address(bob),
+                MANAGE_SELECTORS_PERMISSION_ID
+            )
+        );
+        executeSelectorCondition.disallowSelector(
+            DAO.execute.selector,
+            address(dao)
+        );
+
+        vm.startPrank(carol);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                DaoUnauthorized.selector,
+                address(dao),
+                address(executeSelectorCondition),
+                address(carol),
+                MANAGE_SELECTORS_PERMISSION_ID
+            )
+        );
+        executeSelectorCondition.disallowSelector(
+            DAO.setMetadata.selector,
+            address(dao)
+        );
     }
 
     function test_RevertGiven_TheSelectorIsNotAllowed()
@@ -966,7 +1130,44 @@ contract ExecuteSelectorConditionTest is AragonTest {
         whenCallingRemoveSelector
     {
         // It should revert
-        vm.skip(true);
+
+        dao.grant(
+            address(executeSelectorCondition),
+            bob,
+            MANAGE_SELECTORS_PERMISSION_ID
+        );
+
+        // KO
+        vm.startPrank(bob);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ExecuteSelectorCondition.AlreadyDisallowed.selector
+            )
+        );
+        executeSelectorCondition.disallowSelector(
+            bytes4(uint32(1)),
+            address(this)
+        );
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ExecuteSelectorCondition.AlreadyDisallowed.selector
+            )
+        );
+        executeSelectorCondition.disallowSelector(
+            DAO.execute.selector,
+            address(dao)
+        );
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ExecuteSelectorCondition.AlreadyDisallowed.selector
+            )
+        );
+        executeSelectorCondition.disallowSelector(
+            DAO.setMetadata.selector,
+            address(dao)
+        );
     }
 
     function test_GivenTheCallerHasPermission2()

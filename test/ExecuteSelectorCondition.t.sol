@@ -7,6 +7,8 @@ import {DAO} from "@aragon/osx/core/dao/DAO.sol";
 import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
 import {PermissionManager} from "@aragon/osx/core/permission/PermissionManager.sol";
 import {DaoUnauthorized} from "@aragon/osx/core/utils/auth.sol";
+import {IPermissionCondition} from "@aragon/osx/core/permission/IPermissionCondition.sol";
+import {IERC165Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/introspection/IERC165Upgradeable.sol";
 import {ExecuteSelectorCondition} from "../src/ExecuteSelectorCondition.sol";
 import {ConditionFactory} from "../../src/factory/ConditionFactory.sol";
 import {EXECUTE_PERMISSION_ID, SET_METADATA_PERMISSION_ID, SET_SIGNATURE_VALIDATOR_PERMISSION_ID, REGISTER_STANDARD_CALLBACK_PERMISSION_ID, SET_TRUSTED_FORWARDER_PERMISSION_ID, MANAGE_SELECTORS_PERMISSION_ID} from "./constants.sol";
@@ -16,6 +18,9 @@ contract ExecuteSelectorConditionTest is AragonTest {
     DAO dao;
     ConditionFactory factory;
     ExecuteSelectorCondition executeSelectorCondition;
+
+    event SelectorAllowed(bytes4 selector, address target);
+    event SelectorDisallowed(bytes4 selector, address target);
 
     function setUp() public {
         vm.startPrank(alice);
@@ -28,22 +33,22 @@ contract ExecuteSelectorConditionTest is AragonTest {
         // It should define the given selectors as allowed
 
         vm.assertEq(address(executeSelectorCondition.dao()), address(dao));
-        vm.assertFalse(
+        assertFalse(
             executeSelectorCondition.allowedTargets(address(dao), bytes4(0))
         );
-        vm.assertFalse(
+        assertFalse(
             executeSelectorCondition.allowedTargets(
                 address(dao),
                 bytes4(0x11223344)
             )
         );
-        vm.assertFalse(
+        assertFalse(
             executeSelectorCondition.allowedTargets(
                 address(dao),
                 bytes4(0x55667788)
             )
         );
-        vm.assertFalse(
+        assertFalse(
             executeSelectorCondition.allowedTargets(
                 address(dao),
                 bytes4(0xffffffff)
@@ -64,7 +69,7 @@ contract ExecuteSelectorConditionTest is AragonTest {
             _initialTargets
         );
 
-        vm.assertFalse(
+        assertFalse(
             executeSelectorCondition.allowedTargets(address(dao), bytes4(0))
         );
         vm.assertTrue(
@@ -79,7 +84,7 @@ contract ExecuteSelectorConditionTest is AragonTest {
                 bytes4(0x55667788)
             )
         );
-        vm.assertFalse(
+        assertFalse(
             executeSelectorCondition.allowedTargets(
                 address(dao),
                 bytes4(0xffffffff)
@@ -97,16 +102,14 @@ contract ExecuteSelectorConditionTest is AragonTest {
             _initialTargets
         );
 
-        vm.assertFalse(
-            executeSelectorCondition.allowedTargets(carol, bytes4(0))
-        );
+        assertFalse(executeSelectorCondition.allowedTargets(carol, bytes4(0)));
         vm.assertTrue(
             executeSelectorCondition.allowedTargets(carol, bytes4(0x00008888))
         );
         vm.assertTrue(
             executeSelectorCondition.allowedTargets(carol, bytes4(0x2222aaaa))
         );
-        vm.assertFalse(
+        assertFalse(
             executeSelectorCondition.allowedTargets(carol, bytes4(0xffffffff))
         );
     }
@@ -637,7 +640,7 @@ contract ExecuteSelectorConditionTest is AragonTest {
             DAO.execute,
             (bytes32(uint256(1)), _actions, 0)
         );
-        vm.assertFalse(
+        assertFalse(
             executeSelectorCondition.isGranted(
                 address(0),
                 address(0),
@@ -659,7 +662,7 @@ contract ExecuteSelectorConditionTest is AragonTest {
             DAO.execute,
             (bytes32(uint256(1)), _actions, 0)
         );
-        vm.assertFalse(
+        assertFalse(
             executeSelectorCondition.isGranted(
                 address(0),
                 address(0),
@@ -683,7 +686,7 @@ contract ExecuteSelectorConditionTest is AragonTest {
             DAO.execute,
             (bytes32(uint256(1)), _actions, 0)
         );
-        vm.assertFalse(
+        assertFalse(
             executeSelectorCondition.isGranted(
                 address(0),
                 address(0),
@@ -709,7 +712,7 @@ contract ExecuteSelectorConditionTest is AragonTest {
             DAO.execute,
             (bytes32(uint256(1)), _actions, 0)
         );
-        vm.assertFalse(
+        assertFalse(
             executeSelectorCondition.isGranted(
                 address(0),
                 address(0),
@@ -774,7 +777,7 @@ contract ExecuteSelectorConditionTest is AragonTest {
             DAO.execute,
             (bytes32(uint256(1)), _actions, 0)
         );
-        vm.assertFalse(
+        assertFalse(
             executeSelectorCondition.isGranted(
                 address(0),
                 address(0),
@@ -788,7 +791,7 @@ contract ExecuteSelectorConditionTest is AragonTest {
             DAO.execute,
             (bytes32(uint256(1)), _actions, 0)
         );
-        vm.assertFalse(
+        assertFalse(
             executeSelectorCondition.isGranted(
                 address(0),
                 address(0),
@@ -807,7 +810,7 @@ contract ExecuteSelectorConditionTest is AragonTest {
             DAO.execute,
             (bytes32(uint256(1)), _actions, 0)
         );
-        vm.assertFalse(
+        assertFalse(
             executeSelectorCondition.isGranted(
                 address(0),
                 address(0),
@@ -826,7 +829,7 @@ contract ExecuteSelectorConditionTest is AragonTest {
             DAO.execute,
             (bytes32(uint256(1)), _actions, 0)
         );
-        vm.assertFalse(
+        assertFalse(
             executeSelectorCondition.isGranted(
                 address(0),
                 address(0),
@@ -845,7 +848,7 @@ contract ExecuteSelectorConditionTest is AragonTest {
             DAO.execute,
             (bytes32(uint256(1)), _actions, 0)
         );
-        vm.assertFalse(
+        assertFalse(
             executeSelectorCondition.isGranted(
                 address(0),
                 address(0),
@@ -1028,6 +1031,27 @@ contract ExecuteSelectorConditionTest is AragonTest {
         // It should emit an event
         // It allowedTargets should return true
 
+        // Still false
+        assertFalse(
+            executeSelectorCondition.allowedTargets(
+                address(dao),
+                DAO.setMetadata.selector
+            )
+        );
+        assertFalse(
+            executeSelectorCondition.allowedTargets(
+                address(dao),
+                DAO.execute.selector
+            )
+        );
+        assertFalse(
+            executeSelectorCondition.allowedTargets(
+                address(executeSelectorCondition),
+                ExecuteSelectorCondition.allowSelector.selector
+            )
+        );
+
+        // Permission
         dao.grant(
             address(executeSelectorCondition),
             bob,
@@ -1035,17 +1059,48 @@ contract ExecuteSelectorConditionTest is AragonTest {
         );
 
         vm.startPrank(bob);
+        vm.expectEmit();
+        emit SelectorAllowed(DAO.setMetadata.selector, address(dao));
         executeSelectorCondition.allowSelector(
             DAO.setMetadata.selector,
             address(dao)
         );
+
+        vm.expectEmit();
+        emit SelectorAllowed(DAO.execute.selector, address(dao));
         executeSelectorCondition.allowSelector(
             DAO.execute.selector,
             address(dao)
         );
+
+        vm.expectEmit();
+        emit SelectorAllowed(
+            ExecuteSelectorCondition.allowSelector.selector,
+            address(executeSelectorCondition)
+        );
         executeSelectorCondition.allowSelector(
             ExecuteSelectorCondition.allowSelector.selector,
             address(executeSelectorCondition)
+        );
+
+        // Now true
+        vm.assertTrue(
+            executeSelectorCondition.allowedTargets(
+                address(dao),
+                DAO.setMetadata.selector
+            )
+        );
+        vm.assertTrue(
+            executeSelectorCondition.allowedTargets(
+                address(dao),
+                DAO.execute.selector
+            )
+        );
+        vm.assertTrue(
+            executeSelectorCondition.allowedTargets(
+                address(executeSelectorCondition),
+                ExecuteSelectorCondition.allowSelector.selector
+            )
         );
     }
 
@@ -1177,12 +1232,114 @@ contract ExecuteSelectorConditionTest is AragonTest {
         // It should succeed
         // It should emit an event
         // It allowedTargets should return false
-        vm.skip(true);
+
+        // Permission
+        dao.grant(
+            address(executeSelectorCondition),
+            bob,
+            MANAGE_SELECTORS_PERMISSION_ID
+        );
+
+        // allow first
+        vm.startPrank(bob);
+        executeSelectorCondition.allowSelector(
+            DAO.setMetadata.selector,
+            address(dao)
+        );
+        executeSelectorCondition.allowSelector(
+            DAO.execute.selector,
+            address(dao)
+        );
+        executeSelectorCondition.allowSelector(
+            ExecuteSelectorCondition.allowSelector.selector,
+            address(executeSelectorCondition)
+        );
+
+        vm.assertTrue(
+            executeSelectorCondition.allowedTargets(
+                address(dao),
+                DAO.setMetadata.selector
+            )
+        );
+        vm.assertTrue(
+            executeSelectorCondition.allowedTargets(
+                address(dao),
+                DAO.execute.selector
+            )
+        );
+        vm.assertTrue(
+            executeSelectorCondition.allowedTargets(
+                address(executeSelectorCondition),
+                ExecuteSelectorCondition.allowSelector.selector
+            )
+        );
+
+        // Then remove
+        vm.expectEmit();
+        emit SelectorDisallowed(DAO.setMetadata.selector, address(dao));
+        executeSelectorCondition.disallowSelector(
+            DAO.setMetadata.selector,
+            address(dao)
+        );
+
+        vm.expectEmit();
+        emit SelectorDisallowed(DAO.execute.selector, address(dao));
+        executeSelectorCondition.disallowSelector(
+            DAO.execute.selector,
+            address(dao)
+        );
+
+        vm.expectEmit();
+        emit SelectorDisallowed(
+            ExecuteSelectorCondition.allowSelector.selector,
+            address(executeSelectorCondition)
+        );
+        executeSelectorCondition.disallowSelector(
+            ExecuteSelectorCondition.allowSelector.selector,
+            address(executeSelectorCondition)
+        );
+
+        // Now false
+        assertFalse(
+            executeSelectorCondition.allowedTargets(
+                address(dao),
+                DAO.setMetadata.selector
+            )
+        );
+        assertFalse(
+            executeSelectorCondition.allowedTargets(
+                address(dao),
+                DAO.execute.selector
+            )
+        );
+        assertFalse(
+            executeSelectorCondition.allowedTargets(
+                address(executeSelectorCondition),
+                ExecuteSelectorCondition.allowSelector.selector
+            )
+        );
     }
 
-    function test_WhenCallingSupportsInterface() external {
+    function test_WhenCallingSupportsInterface() external view {
         // It does not support the empty interface
         // It supports IPermissionCondition
-        vm.skip(true);
+
+        // It does not support the empty interface
+        bool supported = executeSelectorCondition.supportsInterface(
+            bytes4(0xffffffff)
+        );
+        assertEq(supported, false, "Should not support the empty interface");
+
+        // It supports IERC165Upgradeable
+        supported = executeSelectorCondition.supportsInterface(
+            type(IERC165Upgradeable).interfaceId
+        );
+        assertEq(supported, true, "Should support IERC165Upgradeable");
+
+        // It supports IPermissionCondition
+        supported = executeSelectorCondition.supportsInterface(
+            type(IPermissionCondition).interfaceId
+        );
+        assertEq(supported, true, "Should support IPermissionCondition");
     }
 }

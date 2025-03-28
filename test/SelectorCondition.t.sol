@@ -5,15 +5,21 @@ import {AragonTest} from "./base/AragonTest.sol";
 import {DaoBuilder} from "./helpers/DaoBuilder.sol";
 import {DAO} from "@aragon/osx/core/dao/DAO.sol";
 import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
+import {DaoUnauthorized} from "@aragon/osx/core/utils/auth.sol";
+import {IPermissionCondition} from "@aragon/osx/core/permission/IPermissionCondition.sol";
+import {IERC165Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/introspection/IERC165Upgradeable.sol";
 import {SelectorCondition} from "../src/SelectorCondition.sol";
 import {ConditionFactory} from "../../src/factory/ConditionFactory.sol";
-import {EXECUTE_PERMISSION_ID, SET_METADATA_PERMISSION_ID} from "./constants.sol";
+import {EXECUTE_PERMISSION_ID, SET_METADATA_PERMISSION_ID, MANAGE_SELECTORS_PERMISSION_ID} from "./constants.sol";
 
 contract SelectorConditionTest is AragonTest {
     DaoBuilder builder;
     DAO dao;
     ConditionFactory factory;
     SelectorCondition selectorCondition;
+
+    event SelectorAllowed(bytes4 selector);
+    event SelectorDisallowed(bytes4 selector);
 
     function setUp() public {
         vm.startPrank(alice);
@@ -187,14 +193,31 @@ contract SelectorConditionTest is AragonTest {
     {
         // It should return false
 
-        // bytes4[] memory selectors = new bytes4[](0);
-        // IDAO.Action[] memory actions = new IDAO.Action[](0);
-        // selectorCondition = SelectorCondition(
-        //     factory.deploySelectorCondition(dao, selectors)
-        // );
-        // bytes memory _calldata = abi.encodeCall(DAO.execute, (0, actions, 0));
+        bytes4[] memory selectors = new bytes4[](0);
+        selectorCondition = SelectorCondition(
+            factory.deploySelectorCondition(dao, selectors)
+        );
+        IDAO.Action[] memory actions = new IDAO.Action[](0);
+        bytes memory _calldata = abi.encodeCall(DAO.execute, (0, actions, 0));
 
-        vm.skip(true);
+        // 1
+        bool granted = selectorCondition.isGranted(
+            address(0),
+            address(0),
+            bytes32(uint256(0)),
+            _calldata
+        );
+        assertFalse(granted, "Should not be granted");
+
+        // 2
+        _calldata = abi.encodeCall(DAO.setMetadata, ("hi"));
+        granted = selectorCondition.isGranted(
+            address(dao),
+            bob,
+            bytes32(uint256(0x12345678)),
+            _calldata
+        );
+        assertFalse(granted, "Should not be granted");
     }
 
     function test_GivenTheCalldataReferencesAnAllowedSelector()
@@ -202,7 +225,45 @@ contract SelectorConditionTest is AragonTest {
         whenCallingIsGranted
     {
         // It should return true
-        vm.skip(true);
+
+        bytes4[] memory selectors = new bytes4[](2);
+        selectors[0] = DAO.execute.selector;
+        selectors[1] = DAO.setMetadata.selector;
+
+        IDAO.Action[] memory actions = new IDAO.Action[](0);
+        selectorCondition = SelectorCondition(
+            factory.deploySelectorCondition(dao, selectors)
+        );
+        bytes memory _calldata = abi.encodeCall(DAO.execute, (0, actions, 0));
+
+        // 1
+        bool granted = selectorCondition.isGranted(
+            address(0),
+            address(0),
+            bytes32(uint256(0)),
+            _calldata
+        );
+        assertTrue(granted, "Should be granted");
+
+        // 2
+        _calldata = abi.encodeCall(DAO.setMetadata, ("hi"));
+        granted = selectorCondition.isGranted(
+            address(dao),
+            bob,
+            bytes32(uint256(0x12345678)),
+            _calldata
+        );
+        assertTrue(granted, "Should be granted");
+
+        // err
+        _calldata = abi.encodeCall(DAO.setTrustedForwarder, (address(0)));
+        granted = selectorCondition.isGranted(
+            address(dao),
+            bob,
+            bytes32(uint256(0x12345678)),
+            _calldata
+        );
+        assertFalse(granted, "Should not be granted");
     }
 
     modifier whenCallingAllowSelector() {
@@ -214,7 +275,52 @@ contract SelectorConditionTest is AragonTest {
         whenCallingAllowSelector
     {
         // It should revert
-        vm.skip(true);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                DaoUnauthorized.selector,
+                address(dao),
+                address(selectorCondition),
+                address(alice),
+                MANAGE_SELECTORS_PERMISSION_ID
+            )
+        );
+        selectorCondition.allowSelector(bytes4(uint32(1)));
+
+        vm.startPrank(bob);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                DaoUnauthorized.selector,
+                address(dao),
+                address(selectorCondition),
+                address(bob),
+                MANAGE_SELECTORS_PERMISSION_ID
+            )
+        );
+        selectorCondition.allowSelector(bytes4(uint32(2)));
+
+        vm.startPrank(carol);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                DaoUnauthorized.selector,
+                address(dao),
+                address(selectorCondition),
+                address(carol),
+                MANAGE_SELECTORS_PERMISSION_ID
+            )
+        );
+        selectorCondition.allowSelector(bytes4(uint32(3)));
+
+        // Now grant it
+        vm.startPrank(alice);
+        dao.grant(
+            address(selectorCondition),
+            bob,
+            MANAGE_SELECTORS_PERMISSION_ID
+        );
+
+        vm.startPrank(bob);
+        selectorCondition.allowSelector(bytes4(uint32(3)));
     }
 
     function test_RevertGiven_TheSelectorIsAlreadyAllowed()
@@ -222,7 +328,22 @@ contract SelectorConditionTest is AragonTest {
         whenCallingAllowSelector
     {
         // It should revert
-        vm.skip(true);
+
+        dao.grant(
+            address(selectorCondition),
+            bob,
+            MANAGE_SELECTORS_PERMISSION_ID
+        );
+
+        // OK
+        vm.startPrank(bob);
+        selectorCondition.allowSelector(bytes4(uint32(1)));
+
+        // KO
+        vm.expectRevert(
+            abi.encodeWithSelector(SelectorCondition.AlreadyAllowed.selector)
+        );
+        selectorCondition.allowSelector(bytes4(uint32(1)));
     }
 
     function test_GivenTheCallerHasPermission()
@@ -232,7 +353,50 @@ contract SelectorConditionTest is AragonTest {
         // It should succeed
         // It should emit an event
         // It allowedSelectors should return true
-        vm.skip(true);
+
+        // Still false
+        assertFalse(
+            selectorCondition.allowedSelectors(DAO.setMetadata.selector)
+        );
+        assertFalse(selectorCondition.allowedSelectors(DAO.execute.selector));
+        assertFalse(
+            selectorCondition.allowedSelectors(
+                SelectorCondition.allowSelector.selector
+            )
+        );
+
+        // Permission
+        dao.grant(
+            address(selectorCondition),
+            bob,
+            MANAGE_SELECTORS_PERMISSION_ID
+        );
+
+        vm.startPrank(bob);
+        vm.expectEmit();
+        emit SelectorAllowed(DAO.setMetadata.selector);
+        selectorCondition.allowSelector(DAO.setMetadata.selector);
+
+        vm.expectEmit();
+        emit SelectorAllowed(DAO.execute.selector);
+        selectorCondition.allowSelector(DAO.execute.selector);
+
+        vm.expectEmit();
+        emit SelectorAllowed(SelectorCondition.allowSelector.selector);
+        selectorCondition.allowSelector(
+            SelectorCondition.allowSelector.selector
+        );
+
+        // Now true
+        vm.assertTrue(
+            selectorCondition.allowedSelectors(DAO.setMetadata.selector)
+        );
+        vm.assertTrue(selectorCondition.allowedSelectors(DAO.execute.selector));
+        vm.assertTrue(
+            selectorCondition.allowedSelectors(
+                SelectorCondition.allowSelector.selector
+            )
+        );
     }
 
     modifier whenCallingRemoveSelector() {
@@ -244,7 +408,56 @@ contract SelectorConditionTest is AragonTest {
         whenCallingRemoveSelector
     {
         // It should revert
-        vm.skip(true);
+
+        dao.grant(
+            address(selectorCondition),
+            alice,
+            MANAGE_SELECTORS_PERMISSION_ID
+        );
+        selectorCondition.allowSelector(DAO.execute.selector);
+        selectorCondition.allowSelector(DAO.setMetadata.selector);
+        dao.revoke(
+            address(selectorCondition),
+            alice,
+            MANAGE_SELECTORS_PERMISSION_ID
+        );
+
+        // Try to remove
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                DaoUnauthorized.selector,
+                address(dao),
+                address(selectorCondition),
+                address(alice),
+                MANAGE_SELECTORS_PERMISSION_ID
+            )
+        );
+        selectorCondition.disallowSelector(DAO.execute.selector);
+
+        vm.startPrank(bob);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                DaoUnauthorized.selector,
+                address(dao),
+                address(selectorCondition),
+                address(bob),
+                MANAGE_SELECTORS_PERMISSION_ID
+            )
+        );
+        selectorCondition.disallowSelector(DAO.execute.selector);
+
+        vm.startPrank(carol);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                DaoUnauthorized.selector,
+                address(dao),
+                address(selectorCondition),
+                address(carol),
+                MANAGE_SELECTORS_PERMISSION_ID
+            )
+        );
+        selectorCondition.disallowSelector(DAO.setMetadata.selector);
     }
 
     function test_RevertGiven_TheSelectorIsNotAllowed()
@@ -252,7 +465,29 @@ contract SelectorConditionTest is AragonTest {
         whenCallingRemoveSelector
     {
         // It should revert
-        vm.skip(true);
+
+        dao.grant(
+            address(selectorCondition),
+            bob,
+            MANAGE_SELECTORS_PERMISSION_ID
+        );
+
+        // KO
+        vm.startPrank(bob);
+        vm.expectRevert(
+            abi.encodeWithSelector(SelectorCondition.AlreadyDisallowed.selector)
+        );
+        selectorCondition.disallowSelector(bytes4(uint32(1)));
+
+        vm.expectRevert(
+            abi.encodeWithSelector(SelectorCondition.AlreadyDisallowed.selector)
+        );
+        selectorCondition.disallowSelector(DAO.execute.selector);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(SelectorCondition.AlreadyDisallowed.selector)
+        );
+        selectorCondition.disallowSelector(DAO.setMetadata.selector);
     }
 
     function test_GivenTheCallerHasPermission2()
@@ -262,12 +497,79 @@ contract SelectorConditionTest is AragonTest {
         // It should succeed
         // It should emit an event
         // It allowedSelectors should return false
-        vm.skip(true);
+
+        // Permission
+        dao.grant(
+            address(selectorCondition),
+            bob,
+            MANAGE_SELECTORS_PERMISSION_ID
+        );
+
+        // allow first
+        vm.startPrank(bob);
+        selectorCondition.allowSelector(DAO.setMetadata.selector);
+        selectorCondition.allowSelector(DAO.execute.selector);
+        selectorCondition.allowSelector(
+            SelectorCondition.allowSelector.selector
+        );
+
+        vm.assertTrue(
+            selectorCondition.allowedSelectors(DAO.setMetadata.selector)
+        );
+        vm.assertTrue(selectorCondition.allowedSelectors(DAO.execute.selector));
+        vm.assertTrue(
+            selectorCondition.allowedSelectors(
+                SelectorCondition.allowSelector.selector
+            )
+        );
+
+        // Then remove
+        vm.expectEmit();
+        emit SelectorDisallowed(DAO.setMetadata.selector);
+        selectorCondition.disallowSelector(DAO.setMetadata.selector);
+
+        vm.expectEmit();
+        emit SelectorDisallowed(DAO.execute.selector);
+        selectorCondition.disallowSelector(DAO.execute.selector);
+
+        vm.expectEmit();
+        emit SelectorDisallowed(SelectorCondition.allowSelector.selector);
+        selectorCondition.disallowSelector(
+            SelectorCondition.allowSelector.selector
+        );
+
+        // Now false
+        assertFalse(
+            selectorCondition.allowedSelectors(DAO.setMetadata.selector)
+        );
+        assertFalse(selectorCondition.allowedSelectors(DAO.execute.selector));
+        assertFalse(
+            selectorCondition.allowedSelectors(
+                SelectorCondition.allowSelector.selector
+            )
+        );
     }
 
-    function test_WhenCallingSupportsInterface() external {
+    function test_WhenCallingSupportsInterface() external view {
         // It does not support the empty interface
         // It supports IPermissionCondition
-        vm.skip(true);
+
+        // It does not support the empty interface
+        bool supported = selectorCondition.supportsInterface(
+            bytes4(0xffffffff)
+        );
+        assertEq(supported, false, "Should not support the empty interface");
+
+        // It supports IERC165Upgradeable
+        supported = selectorCondition.supportsInterface(
+            type(IERC165Upgradeable).interfaceId
+        );
+        assertEq(supported, true, "Should support IERC165Upgradeable");
+
+        // It supports IPermissionCondition
+        supported = selectorCondition.supportsInterface(
+            type(IPermissionCondition).interfaceId
+        );
+        assertEq(supported, true, "Should support IPermissionCondition");
     }
 }

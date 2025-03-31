@@ -1,19 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.22;
 
 import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
-import {DaoAuthorizable} from "@aragon/osx/core/plugin/dao-authorizable/DaoAuthorizable.sol";
-import {IPermissionCondition} from "@aragon/osx/core/permission/IPermissionCondition.sol";
-import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
+import {DaoAuthorizable} from "@aragon/osx-commons-contracts/src/permission/auth/DaoAuthorizable.sol";
+import {IPermissionCondition} from "@aragon/osx-commons-contracts/src/permission/condition/IPermissionCondition.sol";
+import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
+import {IExecutor, Action} from "@aragon/osx-commons-contracts/src/executors/IExecutor.sol";
 
 /// @title ExecuteSelectorCondition
 /// @author AragonX 2025
 /// @notice A permission that only allows a specified group of function selectors to be invoked within DAO.execute()
 contract ExecuteSelectorCondition is
     ERC165,
-    DaoAuthorizable,
-    IPermissionCondition
+    IPermissionCondition,
+    DaoAuthorizable
 {
     struct InitialTarget {
         bytes4 selector;
@@ -23,11 +24,11 @@ contract ExecuteSelectorCondition is
     /// @dev allowedTargets[where][selector]
     mapping(address => mapping(bytes4 => bool)) public allowedTargets;
 
-    bytes32 immutable MANAGE_SELECTORS_PERMISSION_ID =
+    bytes32 public constant MANAGE_SELECTORS_PERMISSION_ID =
         keccak256("MANAGE_SELECTORS_PERMISSION");
 
-    error AlreadyAllowed();
-    error AlreadyDisallowed();
+    error AlreadyAllowed(bytes4 selector, address target);
+    error AlreadyDisallowed(bytes4 selector, address target);
 
     event SelectorAllowed(bytes4 selector, address target);
     event SelectorDisallowed(bytes4 selector, address target);
@@ -37,13 +38,14 @@ contract ExecuteSelectorCondition is
         IDAO _dao,
         InitialTarget[] memory _initialTargets
     ) DaoAuthorizable(_dao) {
-        for (uint256 i; i < _initialTargets.length; ) {
+        for (uint256 i; i < _initialTargets.length; i++) {
             allowedTargets[_initialTargets[i].target][
                 _initialTargets[i].selector
             ] = true;
-            unchecked {
-                i++;
-            }
+            emit SelectorAllowed(
+                _initialTargets[i].selector,
+                _initialTargets[i].target
+            );
         }
     }
 
@@ -53,8 +55,10 @@ contract ExecuteSelectorCondition is
     function allowSelector(
         bytes4 _selector,
         address _target
-    ) public auth(MANAGE_SELECTORS_PERMISSION_ID) {
-        if (allowedTargets[_target][_selector]) revert AlreadyAllowed();
+    ) public virtual auth(MANAGE_SELECTORS_PERMISSION_ID) {
+        if (allowedTargets[_target][_selector]) {
+            revert AlreadyAllowed(_selector, _target);
+        }
         allowedTargets[_target][_selector] = true;
 
         emit SelectorAllowed(_selector, _target);
@@ -66,8 +70,10 @@ contract ExecuteSelectorCondition is
     function disallowSelector(
         bytes4 _selector,
         address _target
-    ) public auth(MANAGE_SELECTORS_PERMISSION_ID) {
-        if (!allowedTargets[_target][_selector]) revert AlreadyDisallowed();
+    ) public virtual auth(MANAGE_SELECTORS_PERMISSION_ID) {
+        if (!allowedTargets[_target][_selector]) {
+            revert AlreadyDisallowed(_selector, _target);
+        }
         allowedTargets[_target][_selector] = false;
 
         emit SelectorDisallowed(_selector, _target);
@@ -79,24 +85,24 @@ contract ExecuteSelectorCondition is
         address _who,
         bytes32 _permissionId,
         bytes calldata _data
-    ) external view returns (bool isPermitted) {
+    ) public view virtual returns (bool isPermitted) {
         (_where, _who, _permissionId);
 
         // Is it execute()?
-        if (_getSelector(_data) != IDAO.execute.selector) {
+        if (_getSelector(_data) != IExecutor.execute.selector) {
             return false;
         }
 
         // Decode proposal params
-        (, IDAO.Action[] memory _actions, ) = abi.decode(
+        (, Action[] memory _actions, ) = abi.decode(
             _data[4:],
-            (bytes32, IDAO.Action[], uint256)
+            (bytes32, Action[], uint256)
         );
-        for (uint256 i; i < _actions.length; ) {
-            if (!allowedTargets[_actions[i].to][_getSelector(_actions[i].data)])
+        for (uint256 i; i < _actions.length; i++) {
+            if (
+                !allowedTargets[_actions[i].to][_getSelector(_actions[i].data)]
+            ) {
                 return false;
-            unchecked {
-                i++;
             }
         }
         return true;

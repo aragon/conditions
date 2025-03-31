@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.17;
+pragma solidity ^0.8.22;
 
 import {AragonTest} from "./base/AragonTest.sol";
 import {DaoBuilder} from "./helpers/DaoBuilder.sol";
 import {DAO} from "@aragon/osx/core/dao/DAO.sol";
-import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
-import {DaoUnauthorized} from "@aragon/osx/core/utils/auth.sol";
-import {IPermissionCondition} from "@aragon/osx/core/permission/IPermissionCondition.sol";
+import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
+import {Action} from "@aragon/osx-commons-contracts/src/executors/IExecutor.sol";
+import {DaoUnauthorized} from "@aragon/osx-commons-contracts/src/permission/auth/auth.sol";
+import {IPermissionCondition} from "@aragon/osx-commons-contracts/src/permission/condition/IPermissionCondition.sol";
 import {IERC165Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/introspection/IERC165Upgradeable.sol";
 import {SelectorCondition} from "../src/SelectorCondition.sol";
-import {ConditionFactory} from "../../src/factory/ConditionFactory.sol";
+import {ConditionFactory} from "../src/factory/ConditionFactory.sol";
 import {EXECUTE_PERMISSION_ID, SET_METADATA_PERMISSION_ID, MANAGE_SELECTORS_PERMISSION_ID} from "./constants.sol";
 
 contract SelectorConditionTest is AragonTest {
@@ -108,7 +109,7 @@ contract SelectorConditionTest is AragonTest {
         dao.setMetadata("ipfs://");
 
         // fails
-        IDAO.Action[] memory _actions = new IDAO.Action[](0);
+        Action[] memory _actions = new Action[](0);
         vm.expectRevert();
         dao.execute(bytes32(0), _actions, 0);
     }
@@ -122,7 +123,7 @@ contract SelectorConditionTest is AragonTest {
         vm.expectRevert();
         dao.setMetadata("ipfs://");
 
-        IDAO.Action[] memory _actions = new IDAO.Action[](0);
+        Action[] memory _actions = new Action[](0);
         vm.expectRevert();
         dao.execute(bytes32(0), _actions, 0);
 
@@ -147,7 +148,7 @@ contract SelectorConditionTest is AragonTest {
         vm.expectRevert();
         dao.setMetadata("ipfs://");
 
-        _actions = new IDAO.Action[](0);
+        _actions = new Action[](0);
         vm.expectRevert();
         dao.execute(bytes32(0), _actions, 0);
 
@@ -197,7 +198,7 @@ contract SelectorConditionTest is AragonTest {
         selectorCondition = SelectorCondition(
             factory.deploySelectorCondition(dao, selectors)
         );
-        IDAO.Action[] memory actions = new IDAO.Action[](0);
+        Action[] memory actions = new Action[](0);
         bytes memory _calldata = abi.encodeCall(DAO.execute, (0, actions, 0));
 
         // 1
@@ -230,7 +231,7 @@ contract SelectorConditionTest is AragonTest {
         selectors[0] = DAO.execute.selector;
         selectors[1] = DAO.setMetadata.selector;
 
-        IDAO.Action[] memory actions = new IDAO.Action[](0);
+        Action[] memory actions = new Action[](0);
         selectorCondition = SelectorCondition(
             factory.deploySelectorCondition(dao, selectors)
         );
@@ -341,7 +342,10 @@ contract SelectorConditionTest is AragonTest {
 
         // KO
         vm.expectRevert(
-            abi.encodeWithSelector(SelectorCondition.AlreadyAllowed.selector)
+            abi.encodeWithSelector(
+                SelectorCondition.AlreadyAllowed.selector,
+                bytes4(uint32(1))
+            )
         );
         selectorCondition.allowSelector(bytes4(uint32(1)));
     }
@@ -475,17 +479,26 @@ contract SelectorConditionTest is AragonTest {
         // KO
         vm.startPrank(bob);
         vm.expectRevert(
-            abi.encodeWithSelector(SelectorCondition.AlreadyDisallowed.selector)
+            abi.encodeWithSelector(
+                SelectorCondition.AlreadyDisallowed.selector,
+                bytes4(uint32(1))
+            )
         );
         selectorCondition.disallowSelector(bytes4(uint32(1)));
 
         vm.expectRevert(
-            abi.encodeWithSelector(SelectorCondition.AlreadyDisallowed.selector)
+            abi.encodeWithSelector(
+                SelectorCondition.AlreadyDisallowed.selector,
+                DAO.execute.selector
+            )
         );
         selectorCondition.disallowSelector(DAO.execute.selector);
 
         vm.expectRevert(
-            abi.encodeWithSelector(SelectorCondition.AlreadyDisallowed.selector)
+            abi.encodeWithSelector(
+                SelectorCondition.AlreadyDisallowed.selector,
+                DAO.setMetadata.selector
+            )
         );
         selectorCondition.disallowSelector(DAO.setMetadata.selector);
     }

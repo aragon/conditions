@@ -51,7 +51,7 @@ contract ExecuteSelectorCondition is
     function allowSelector(
         bytes4 _selector,
         address _target
-    ) public auth(MANAGE_SELECTORS_PERMISSION_ID) {
+    ) public virtual auth(MANAGE_SELECTORS_PERMISSION_ID) {
         if (allowedTargets[_target][_selector]) revert AlreadyAllowed();
         allowedTargets[_target][_selector] = true;
 
@@ -64,7 +64,7 @@ contract ExecuteSelectorCondition is
     function disallowSelector(
         bytes4 _selector,
         address _target
-    ) public auth(MANAGE_SELECTORS_PERMISSION_ID) {
+    ) public virtual auth(MANAGE_SELECTORS_PERMISSION_ID) {
         if (!allowedTargets[_target][_selector]) revert AlreadyDisallowed();
         allowedTargets[_target][_selector] = false;
 
@@ -77,7 +77,7 @@ contract ExecuteSelectorCondition is
         address _who,
         bytes32 _permissionId,
         bytes calldata _data
-    ) external view returns (bool isPermitted) {
+    ) external view virtual returns (bool isPermitted) {
         (_where, _who, _permissionId);
 
         // Is it execute()?

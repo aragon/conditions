@@ -36,7 +36,7 @@ contract SelectorCondition is ERC165, IPermissionCondition, DaoAuthorizable {
     /// @param _selector The function selector to start allowing
     function allowSelector(
         bytes4 _selector
-    ) public auth(MANAGE_SELECTORS_PERMISSION_ID) {
+    ) public virtual auth(MANAGE_SELECTORS_PERMISSION_ID) {
         if (allowedSelectors[_selector]) revert AlreadyAllowed();
         allowedSelectors[_selector] = true;
 
@@ -47,7 +47,7 @@ contract SelectorCondition is ERC165, IPermissionCondition, DaoAuthorizable {
     /// @param _selector The function selector to stop allowing
     function disallowSelector(
         bytes4 _selector
-    ) public auth(MANAGE_SELECTORS_PERMISSION_ID) {
+    ) public virtual auth(MANAGE_SELECTORS_PERMISSION_ID) {
         if (!allowedSelectors[_selector]) revert AlreadyDisallowed();
         allowedSelectors[_selector] = false;
 
@@ -60,7 +60,7 @@ contract SelectorCondition is ERC165, IPermissionCondition, DaoAuthorizable {
         address _who,
         bytes32 _permissionId,
         bytes calldata _data
-    ) external view returns (bool isPermitted) {
+    ) public view virtual returns (bool isPermitted) {
         (_where, _who, _permissionId);
 
         return allowedSelectors[_getSelector(_data)];

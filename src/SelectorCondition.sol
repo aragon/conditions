@@ -13,7 +13,7 @@ import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
 contract SelectorCondition is ERC165, IPermissionCondition, DaoAuthorizable {
     mapping(bytes4 => bool) public allowedSelectors;
 
-    bytes32 immutable MANAGE_SELECTORS_PERMISSION_ID =
+    bytes32 public constant MANAGE_SELECTORS_PERMISSION_ID =
         keccak256("MANAGE_SELECTORS_PERMISSION");
 
     error AlreadyAllowed();

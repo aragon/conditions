@@ -24,7 +24,7 @@ contract ExecuteSelectorCondition is
     /// @dev allowedTargets[where][selector]
     mapping(address => mapping(bytes4 => bool)) public allowedTargets;
 
-    bytes32 immutable MANAGE_SELECTORS_PERMISSION_ID =
+    bytes32 public constant MANAGE_SELECTORS_PERMISSION_ID =
         keccak256("MANAGE_SELECTORS_PERMISSION");
 
     error AlreadyAllowed();

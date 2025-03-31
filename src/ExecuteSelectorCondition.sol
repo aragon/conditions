@@ -38,13 +38,10 @@ contract ExecuteSelectorCondition is
         IDAO _dao,
         InitialTarget[] memory _initialTargets
     ) DaoAuthorizable(_dao) {
-        for (uint256 i; i < _initialTargets.length; ) {
+        for (uint256 i; i < _initialTargets.length; i++) {
             allowedTargets[_initialTargets[i].target][
                 _initialTargets[i].selector
             ] = true;
-            unchecked {
-                i++;
-            }
         }
     }
 
@@ -93,11 +90,11 @@ contract ExecuteSelectorCondition is
             _data[4:],
             (bytes32, Action[], uint256)
         );
-        for (uint256 i; i < _actions.length; ) {
-            if (!allowedTargets[_actions[i].to][_getSelector(_actions[i].data)])
+        for (uint256 i; i < _actions.length; i++) {
+            if (
+                !allowedTargets[_actions[i].to][_getSelector(_actions[i].data)]
+            ) {
                 return false;
-            unchecked {
-                i++;
             }
         }
         return true;

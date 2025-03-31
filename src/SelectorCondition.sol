@@ -27,11 +27,8 @@ contract SelectorCondition is ERC165, DaoAuthorizable, IPermissionCondition {
         IDAO _dao,
         bytes4[] memory _initialSelectors
     ) DaoAuthorizable(_dao) {
-        for (uint256 i; i < _initialSelectors.length; ) {
+        for (uint256 i; i < _initialSelectors.length; i++) {
             allowedSelectors[_initialSelectors[i]] = true;
-            unchecked {
-                i++;
-            }
         }
     }
 

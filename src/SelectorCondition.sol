@@ -16,8 +16,8 @@ contract SelectorCondition is ERC165, IPermissionCondition, DaoAuthorizable {
     bytes32 public constant MANAGE_SELECTORS_PERMISSION_ID =
         keccak256("MANAGE_SELECTORS_PERMISSION");
 
-    error AlreadyAllowed();
-    error AlreadyDisallowed();
+    error AlreadyAllowed(bytes4 selector);
+    error AlreadyDisallowed(bytes4 selector);
 
     event SelectorAllowed(bytes4 selector);
     event SelectorDisallowed(bytes4 selector);
@@ -29,6 +29,7 @@ contract SelectorCondition is ERC165, IPermissionCondition, DaoAuthorizable {
     ) DaoAuthorizable(_dao) {
         for (uint256 i; i < _initialSelectors.length; i++) {
             allowedSelectors[_initialSelectors[i]] = true;
+            emit SelectorAllowed(_initialSelectors[i]);
         }
     }
 
@@ -37,7 +38,7 @@ contract SelectorCondition is ERC165, IPermissionCondition, DaoAuthorizable {
     function allowSelector(
         bytes4 _selector
     ) public virtual auth(MANAGE_SELECTORS_PERMISSION_ID) {
-        if (allowedSelectors[_selector]) revert AlreadyAllowed();
+        if (allowedSelectors[_selector]) revert AlreadyAllowed(_selector);
         allowedSelectors[_selector] = true;
 
         emit SelectorAllowed(_selector);
@@ -48,7 +49,7 @@ contract SelectorCondition is ERC165, IPermissionCondition, DaoAuthorizable {
     function disallowSelector(
         bytes4 _selector
     ) public virtual auth(MANAGE_SELECTORS_PERMISSION_ID) {
-        if (!allowedSelectors[_selector]) revert AlreadyDisallowed();
+        if (!allowedSelectors[_selector]) revert AlreadyDisallowed(_selector);
         allowedSelectors[_selector] = false;
 
         emit SelectorDisallowed(_selector);

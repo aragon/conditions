@@ -924,16 +924,31 @@ contract ExecuteSelectorConditionTest is AragonTest {
             address(this)
         );
 
+        executeSelectorCondition.allowSelector(bytes4(uint32(1)), address(dao));
+        executeSelectorCondition.allowSelector(bytes4(uint32(1)), alice);
+        executeSelectorCondition.allowSelector(bytes4(uint32(1)), bob);
+
         // KO
         vm.expectRevert(
             abi.encodeWithSelector(
-                ExecuteSelectorCondition.AlreadyAllowed.selector
+                ExecuteSelectorCondition.AlreadyAllowed.selector,
+                bytes4(uint32(1)),
+                address(this)
             )
         );
         executeSelectorCondition.allowSelector(
             bytes4(uint32(1)),
             address(this)
         );
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ExecuteSelectorCondition.AlreadyAllowed.selector,
+                bytes4(uint32(1)),
+                address(dao)
+            )
+        );
+        executeSelectorCondition.allowSelector(bytes4(uint32(1)), address(dao));
     }
 
     function test_GivenTheCallerHasPermission()
@@ -1109,7 +1124,9 @@ contract ExecuteSelectorConditionTest is AragonTest {
         vm.startPrank(bob);
         vm.expectRevert(
             abi.encodeWithSelector(
-                ExecuteSelectorCondition.AlreadyDisallowed.selector
+                ExecuteSelectorCondition.AlreadyDisallowed.selector,
+                bytes4(uint32(1)),
+                address(this)
             )
         );
         executeSelectorCondition.disallowSelector(
@@ -1119,7 +1136,9 @@ contract ExecuteSelectorConditionTest is AragonTest {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                ExecuteSelectorCondition.AlreadyDisallowed.selector
+                ExecuteSelectorCondition.AlreadyDisallowed.selector,
+                DAO.execute.selector,
+                address(dao)
             )
         );
         executeSelectorCondition.disallowSelector(
@@ -1129,7 +1148,9 @@ contract ExecuteSelectorConditionTest is AragonTest {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                ExecuteSelectorCondition.AlreadyDisallowed.selector
+                ExecuteSelectorCondition.AlreadyDisallowed.selector,
+                DAO.setMetadata.selector,
+                address(dao)
             )
         );
         executeSelectorCondition.disallowSelector(

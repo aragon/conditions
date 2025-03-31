@@ -342,7 +342,10 @@ contract SelectorConditionTest is AragonTest {
 
         // KO
         vm.expectRevert(
-            abi.encodeWithSelector(SelectorCondition.AlreadyAllowed.selector)
+            abi.encodeWithSelector(
+                SelectorCondition.AlreadyAllowed.selector,
+                bytes4(uint32(1))
+            )
         );
         selectorCondition.allowSelector(bytes4(uint32(1)));
     }
@@ -476,17 +479,26 @@ contract SelectorConditionTest is AragonTest {
         // KO
         vm.startPrank(bob);
         vm.expectRevert(
-            abi.encodeWithSelector(SelectorCondition.AlreadyDisallowed.selector)
+            abi.encodeWithSelector(
+                SelectorCondition.AlreadyDisallowed.selector,
+                bytes4(uint32(1))
+            )
         );
         selectorCondition.disallowSelector(bytes4(uint32(1)));
 
         vm.expectRevert(
-            abi.encodeWithSelector(SelectorCondition.AlreadyDisallowed.selector)
+            abi.encodeWithSelector(
+                SelectorCondition.AlreadyDisallowed.selector,
+                DAO.execute.selector
+            )
         );
         selectorCondition.disallowSelector(DAO.execute.selector);
 
         vm.expectRevert(
-            abi.encodeWithSelector(SelectorCondition.AlreadyDisallowed.selector)
+            abi.encodeWithSelector(
+                SelectorCondition.AlreadyDisallowed.selector,
+                DAO.setMetadata.selector
+            )
         );
         selectorCondition.disallowSelector(DAO.setMetadata.selector);
     }

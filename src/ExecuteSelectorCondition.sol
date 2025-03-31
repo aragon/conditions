@@ -27,8 +27,8 @@ contract ExecuteSelectorCondition is
     bytes32 public constant MANAGE_SELECTORS_PERMISSION_ID =
         keccak256("MANAGE_SELECTORS_PERMISSION");
 
-    error AlreadyAllowed();
-    error AlreadyDisallowed();
+    error AlreadyAllowed(bytes4 selector, address target);
+    error AlreadyDisallowed(bytes4 selector, address target);
 
     event SelectorAllowed(bytes4 selector, address target);
     event SelectorDisallowed(bytes4 selector, address target);
@@ -42,6 +42,10 @@ contract ExecuteSelectorCondition is
             allowedTargets[_initialTargets[i].target][
                 _initialTargets[i].selector
             ] = true;
+            emit SelectorAllowed(
+                _initialTargets[i].selector,
+                _initialTargets[i].target
+            );
         }
     }
 
@@ -52,7 +56,9 @@ contract ExecuteSelectorCondition is
         bytes4 _selector,
         address _target
     ) public virtual auth(MANAGE_SELECTORS_PERMISSION_ID) {
-        if (allowedTargets[_target][_selector]) revert AlreadyAllowed();
+        if (allowedTargets[_target][_selector]) {
+            revert AlreadyAllowed(_selector, _target);
+        }
         allowedTargets[_target][_selector] = true;
 
         emit SelectorAllowed(_selector, _target);
@@ -65,7 +71,9 @@ contract ExecuteSelectorCondition is
         bytes4 _selector,
         address _target
     ) public virtual auth(MANAGE_SELECTORS_PERMISSION_ID) {
-        if (!allowedTargets[_target][_selector]) revert AlreadyDisallowed();
+        if (!allowedTargets[_target][_selector]) {
+            revert AlreadyDisallowed(_selector, _target);
+        }
         allowedTargets[_target][_selector] = false;
 
         emit SelectorDisallowed(_selector, _target);

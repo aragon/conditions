@@ -3,7 +3,7 @@ pragma solidity ^0.8.22;
 
 import {Test} from "forge-std/Test.sol";
 import {DAO} from "@aragon/osx/core/dao/DAO.sol";
-import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
+import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
 import {ALICE_ADDRESS, BOB_ADDRESS} from "../constants.sol";
 import {ExecuteSelectorCondition} from "../../src/ExecuteSelectorCondition.sol";
 import {SelectorCondition} from "../../src/SelectorCondition.sol";

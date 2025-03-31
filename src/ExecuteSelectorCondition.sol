@@ -3,9 +3,10 @@
 pragma solidity ^0.8.22;
 
 import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
-import {DaoAuthorizable} from "@aragon/osx/core/plugin/dao-authorizable/DaoAuthorizable.sol";
-import {IPermissionCondition} from "@aragon/osx/core/permission/IPermissionCondition.sol";
-import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
+import {DaoAuthorizable} from "@aragon/osx-commons-contracts/src/permission/auth/DaoAuthorizable.sol";
+import {IPermissionCondition} from "@aragon/osx-commons-contracts/src/permission/condition/IPermissionCondition.sol";
+import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
+import {IExecutor, Action} from "@aragon/osx-commons-contracts/src/executors/IExecutor.sol";
 
 /// @title ExecuteSelectorCondition
 /// @author AragonX 2025
@@ -83,14 +84,14 @@ contract ExecuteSelectorCondition is
         (_where, _who, _permissionId);
 
         // Is it execute()?
-        if (_getSelector(_data) != IDAO.execute.selector) {
+        if (_getSelector(_data) != IExecutor.execute.selector) {
             return false;
         }
 
         // Decode proposal params
-        (, IDAO.Action[] memory _actions, ) = abi.decode(
+        (, Action[] memory _actions, ) = abi.decode(
             _data[4:],
-            (bytes32, IDAO.Action[], uint256)
+            (bytes32, Action[], uint256)
         );
         for (uint256 i; i < _actions.length; ) {
             if (!allowedTargets[_actions[i].to][_getSelector(_actions[i].data)])

@@ -3,9 +3,9 @@
 pragma solidity ^0.8.22;
 
 import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
-import {DaoAuthorizable} from "@aragon/osx/core/plugin/dao-authorizable/DaoAuthorizable.sol";
-import {IPermissionCondition} from "@aragon/osx/core/permission/IPermissionCondition.sol";
-import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
+import {DaoAuthorizable} from "@aragon/osx-commons-contracts/src/permission/auth/DaoAuthorizable.sol";
+import {IPermissionCondition} from "@aragon/osx-commons-contracts/src/permission/condition/IPermissionCondition.sol";
+import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
 
 /// @title SelectorCondition
 /// @author AragonX 2025

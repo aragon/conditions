@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.22;
+pragma solidity ^0.8.22;
 
 import {AragonTest} from "./base/AragonTest.sol";
 import {DaoBuilder} from "./helpers/DaoBuilder.sol";
 import {DAO} from "@aragon/osx/core/dao/DAO.sol";
-import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
+import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
+import {Action} from "@aragon/osx-commons-contracts/src/executors/IExecutor.sol";
 import {PermissionManager} from "@aragon/osx/core/permission/PermissionManager.sol";
-import {DaoUnauthorized} from "@aragon/osx/core/utils/auth.sol";
-import {IPermissionCondition} from "@aragon/osx/core/permission/IPermissionCondition.sol";
+import {DaoUnauthorized} from "@aragon/osx-commons-contracts/src/permission/auth/auth.sol";
+import {IPermissionCondition} from "@aragon/osx-commons-contracts/src/permission/condition/IPermissionCondition.sol";
 import {IERC165Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/introspection/IERC165Upgradeable.sol";
 import {ExecuteSelectorCondition} from "../src/ExecuteSelectorCondition.sol";
 import {ConditionFactory} from "../../src/factory/ConditionFactory.sol";
@@ -149,7 +150,7 @@ contract ExecuteSelectorConditionTest is AragonTest {
 
         // Now calling execute (no actions)
         vm.startPrank(bob);
-        IDAO.Action[] memory _actions = new IDAO.Action[](0);
+        Action[] memory _actions = new Action[](0);
         dao.execute(bytes32(0), _actions, 0);
     }
 
@@ -189,7 +190,7 @@ contract ExecuteSelectorConditionTest is AragonTest {
             factory.deployExecuteSelectorCondition(dao, _targets)
         );
 
-        IDAO.Action[] memory _actions = new IDAO.Action[](0);
+        Action[] memory _actions = new Action[](0);
 
         // Can execute, but no selectors are allowed
         dao.grantWithCondition(
@@ -204,18 +205,16 @@ contract ExecuteSelectorConditionTest is AragonTest {
         dao.execute(bytes32(0), _actions, 0);
 
         // 2 all out
-        _actions = new IDAO.Action[](4);
+        _actions = new Action[](3);
         _actions[0].data = abi.encodeCall(DAO.setMetadata, ("hi"));
         _actions[0].to = address(dao);
-        _actions[1].data = abi.encodeCall(DAO.setSignatureValidator, (bob));
-        _actions[1].to = address(dao);
-        _actions[2].data = abi.encodeCall(
+        _actions[1].data = abi.encodeCall(
             DAO.registerStandardCallback,
             (bytes4(uint32(1)), bytes4(uint32(2)), bytes4(uint32(3)))
         );
+        _actions[1].to = address(dao);
+        _actions[2].data = abi.encodeCall(DAO.setTrustedForwarder, (carol));
         _actions[2].to = address(dao);
-        _actions[3].data = abi.encodeCall(DAO.setTrustedForwarder, (carol));
-        _actions[3].to = address(dao);
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -264,47 +263,11 @@ contract ExecuteSelectorConditionTest is AragonTest {
             vm.startPrank(alice);
             dao.revoke(address(dao), bob, EXECUTE_PERMISSION_ID);
 
-            _targets = new ExecuteSelectorCondition.InitialTarget[](2);
-            _targets[0].selector = DAO.setMetadata.selector;
-            _targets[0].target = address(dao);
-            _targets[1].selector = DAO.setSignatureValidator.selector;
-            _targets[1].target = address(dao);
-
-            executeSelectorCondition = ExecuteSelectorCondition(
-                factory.deployExecuteSelectorCondition(dao, _targets)
-            );
-            dao.grantWithCondition(
-                address(dao),
-                bob,
-                EXECUTE_PERMISSION_ID,
-                executeSelectorCondition
-            );
-
-            vm.startPrank(bob);
-        }
-
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                PermissionManager.Unauthorized.selector,
-                address(dao),
-                address(bob),
-                EXECUTE_PERMISSION_ID
-            )
-        );
-        dao.execute(bytes32(uint256(2)), _actions, 0);
-
-        // 5 still one left
-        {
-            vm.startPrank(alice);
-            dao.revoke(address(dao), bob, EXECUTE_PERMISSION_ID);
-
             _targets = new ExecuteSelectorCondition.InitialTarget[](3);
             _targets[0].selector = DAO.setMetadata.selector;
             _targets[0].target = address(dao);
-            _targets[1].selector = DAO.setSignatureValidator.selector;
+            _targets[1].selector = DAO.registerStandardCallback.selector;
             _targets[1].target = address(dao);
-            _targets[2].selector = DAO.registerStandardCallback.selector;
-            _targets[2].target = address(dao);
 
             executeSelectorCondition = ExecuteSelectorCondition(
                 factory.deployExecuteSelectorCondition(dao, _targets)
@@ -362,18 +325,16 @@ contract ExecuteSelectorConditionTest is AragonTest {
         _targets = new ExecuteSelectorCondition.InitialTarget[](4);
         _targets[0].selector = DAO.setMetadata.selector;
         _targets[0].target = carol;
-        _targets[1].selector = DAO.setSignatureValidator.selector;
+        _targets[1].selector = DAO.registerStandardCallback.selector;
         _targets[1].target = carol;
         _targets[2].selector = DAO.registerStandardCallback.selector;
         _targets[2].target = carol;
-        _targets[3].selector = DAO.registerStandardCallback.selector;
-        _targets[3].target = carol;
 
         executeSelectorCondition = ExecuteSelectorCondition(
             factory.deployExecuteSelectorCondition(dao, _targets)
         );
 
-        IDAO.Action[] memory _actions = new IDAO.Action[](0);
+        Action[] memory _actions = new Action[](0);
 
         // Can execute, but no selectors are allowed
         dao.grantWithCondition(
@@ -388,18 +349,16 @@ contract ExecuteSelectorConditionTest is AragonTest {
         dao.execute(bytes32(0), _actions, 0);
 
         // 2 all on a different target
-        _actions = new IDAO.Action[](4);
+        _actions = new Action[](4);
         _actions[0].data = abi.encodeCall(DAO.setMetadata, ("hi"));
         _actions[0].to = address(dao);
-        _actions[1].data = abi.encodeCall(DAO.setSignatureValidator, (bob));
-        _actions[1].to = address(dao);
-        _actions[2].data = abi.encodeCall(
+        _actions[1].data = abi.encodeCall(
             DAO.registerStandardCallback,
             (bytes4(uint32(1)), bytes4(uint32(2)), bytes4(uint32(3)))
         );
+        _actions[1].to = address(dao);
+        _actions[2].data = abi.encodeCall(DAO.setTrustedForwarder, (carol));
         _actions[2].to = address(dao);
-        _actions[3].data = abi.encodeCall(DAO.setTrustedForwarder, (carol));
-        _actions[3].to = address(dao);
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -419,12 +378,10 @@ contract ExecuteSelectorConditionTest is AragonTest {
             _targets = new ExecuteSelectorCondition.InitialTarget[](4);
             _targets[0].selector = DAO.setMetadata.selector;
             _targets[0].target = address(dao);
-            _targets[1].selector = DAO.setSignatureValidator.selector;
+            _targets[1].selector = DAO.registerStandardCallback.selector;
             _targets[1].target = carol;
             _targets[2].selector = DAO.registerStandardCallback.selector;
             _targets[2].target = carol;
-            _targets[3].selector = DAO.registerStandardCallback.selector;
-            _targets[3].target = carol;
 
             executeSelectorCondition = ExecuteSelectorCondition(
                 factory.deployExecuteSelectorCondition(dao, _targets)
@@ -457,12 +414,10 @@ contract ExecuteSelectorConditionTest is AragonTest {
             _targets = new ExecuteSelectorCondition.InitialTarget[](4);
             _targets[0].selector = DAO.setMetadata.selector;
             _targets[0].target = address(dao);
-            _targets[1].selector = DAO.setSignatureValidator.selector;
-            _targets[1].target = address(dao);
+            _targets[1].selector = DAO.registerStandardCallback.selector;
+            _targets[1].target = carol;
             _targets[2].selector = DAO.registerStandardCallback.selector;
             _targets[2].target = carol;
-            _targets[3].selector = DAO.registerStandardCallback.selector;
-            _targets[3].target = carol;
 
             executeSelectorCondition = ExecuteSelectorCondition(
                 factory.deployExecuteSelectorCondition(dao, _targets)
@@ -495,12 +450,10 @@ contract ExecuteSelectorConditionTest is AragonTest {
             _targets = new ExecuteSelectorCondition.InitialTarget[](4);
             _targets[0].selector = DAO.setMetadata.selector;
             _targets[0].target = address(dao);
-            _targets[1].selector = DAO.setSignatureValidator.selector;
+            _targets[1].selector = DAO.registerStandardCallback.selector;
             _targets[1].target = address(dao);
             _targets[2].selector = DAO.registerStandardCallback.selector;
-            _targets[2].target = address(dao);
-            _targets[3].selector = DAO.registerStandardCallback.selector;
-            _targets[3].target = carol;
+            _targets[2].target = carol;
 
             executeSelectorCondition = ExecuteSelectorCondition(
                 factory.deployExecuteSelectorCondition(dao, _targets)
@@ -552,12 +505,10 @@ contract ExecuteSelectorConditionTest is AragonTest {
             memory _targets = new ExecuteSelectorCondition.InitialTarget[](4);
         _targets[0].selector = DAO.setMetadata.selector;
         _targets[0].target = address(dao);
-        _targets[1].selector = DAO.setSignatureValidator.selector;
+        _targets[1].selector = DAO.registerStandardCallback.selector;
         _targets[1].target = address(dao);
-        _targets[2].selector = DAO.registerStandardCallback.selector;
+        _targets[2].selector = DAO.setTrustedForwarder.selector;
         _targets[2].target = address(dao);
-        _targets[3].selector = DAO.setTrustedForwarder.selector;
-        _targets[3].target = address(dao);
 
         executeSelectorCondition = ExecuteSelectorCondition(
             factory.deployExecuteSelectorCondition(dao, _targets)
@@ -573,18 +524,16 @@ contract ExecuteSelectorConditionTest is AragonTest {
         // Bob can now execute these actions
         vm.startPrank(bob);
 
-        IDAO.Action[] memory _actions = new IDAO.Action[](4);
+        Action[] memory _actions = new Action[](4);
         _actions[0].data = abi.encodeCall(DAO.setMetadata, ("hi"));
         _actions[0].to = address(dao);
-        _actions[1].data = abi.encodeCall(DAO.setSignatureValidator, (bob));
-        _actions[1].to = address(dao);
-        _actions[2].data = abi.encodeCall(
+        _actions[1].data = abi.encodeCall(
             DAO.registerStandardCallback,
             (bytes4(uint32(1)), bytes4(uint32(2)), bytes4(uint32(3)))
         );
+        _actions[1].to = address(dao);
+        _actions[2].data = abi.encodeCall(DAO.setTrustedForwarder, (carol));
         _actions[2].to = address(dao);
-        _actions[3].data = abi.encodeCall(DAO.setTrustedForwarder, (carol));
-        _actions[3].to = address(dao);
 
         dao.execute(bytes32(uint256(2)), _actions, 0);
     }
@@ -606,7 +555,7 @@ contract ExecuteSelectorConditionTest is AragonTest {
             factory.deployExecuteSelectorCondition(dao, _targets)
         );
 
-        IDAO.Action[] memory _actions = new IDAO.Action[](0);
+        Action[] memory _actions = new Action[](0);
 
         // 1 no actions
         bytes memory _calldata = abi.encodeCall(
@@ -623,18 +572,16 @@ contract ExecuteSelectorConditionTest is AragonTest {
         );
 
         // 2 all out
-        _actions = new IDAO.Action[](4);
+        _actions = new Action[](4);
         _actions[0].data = abi.encodeCall(DAO.setMetadata, ("hi"));
         _actions[0].to = address(dao);
-        _actions[1].data = abi.encodeCall(DAO.setSignatureValidator, (bob));
-        _actions[1].to = address(dao);
-        _actions[2].data = abi.encodeCall(
+        _actions[1].data = abi.encodeCall(
             DAO.registerStandardCallback,
             (bytes4(uint32(1)), bytes4(uint32(2)), bytes4(uint32(3)))
         );
+        _actions[1].to = address(dao);
+        _actions[2].data = abi.encodeCall(DAO.setTrustedForwarder, (carol));
         _actions[2].to = address(dao);
-        _actions[3].data = abi.encodeCall(DAO.setTrustedForwarder, (carol));
-        _actions[3].to = address(dao);
 
         _calldata = abi.encodeCall(
             DAO.execute,
@@ -672,37 +619,11 @@ contract ExecuteSelectorConditionTest is AragonTest {
         );
 
         // 4 some still out
-        _targets = new ExecuteSelectorCondition.InitialTarget[](2);
-        _targets[0].selector = DAO.setMetadata.selector;
-        _targets[0].target = address(dao);
-        _targets[1].selector = DAO.setSignatureValidator.selector;
-        _targets[1].target = address(dao);
-
-        executeSelectorCondition = ExecuteSelectorCondition(
-            factory.deployExecuteSelectorCondition(dao, _targets)
-        );
-
-        _calldata = abi.encodeCall(
-            DAO.execute,
-            (bytes32(uint256(1)), _actions, 0)
-        );
-        assertFalse(
-            executeSelectorCondition.isGranted(
-                address(0),
-                address(0),
-                bytes32(0),
-                _calldata
-            )
-        );
-
-        // 5 still one left
         _targets = new ExecuteSelectorCondition.InitialTarget[](3);
         _targets[0].selector = DAO.setMetadata.selector;
         _targets[0].target = address(dao);
-        _targets[1].selector = DAO.setSignatureValidator.selector;
+        _targets[1].selector = DAO.registerStandardCallback.selector;
         _targets[1].target = address(dao);
-        _targets[2].selector = DAO.registerStandardCallback.selector;
-        _targets[2].target = address(dao);
 
         executeSelectorCondition = ExecuteSelectorCondition(
             factory.deployExecuteSelectorCondition(dao, _targets)
@@ -733,19 +654,17 @@ contract ExecuteSelectorConditionTest is AragonTest {
             memory _targets = new ExecuteSelectorCondition.InitialTarget[](4);
         _targets[0].selector = DAO.setMetadata.selector;
         _targets[0].target = address(dao);
-        _targets[1].selector = DAO.setSignatureValidator.selector;
+        _targets[1].selector = DAO.registerStandardCallback.selector;
         _targets[1].target = address(dao);
-        _targets[2].selector = DAO.registerStandardCallback.selector;
+        _targets[2].selector = DAO.setTrustedForwarder.selector;
         _targets[2].target = address(dao);
-        _targets[3].selector = DAO.setTrustedForwarder.selector;
-        _targets[3].target = address(dao);
 
         executeSelectorCondition = ExecuteSelectorCondition(
             factory.deployExecuteSelectorCondition(dao, _targets)
         );
 
         // 1 no actions
-        IDAO.Action[] memory _actions = new IDAO.Action[](0);
+        Action[] memory _actions = new Action[](0);
         bytes memory _calldata = abi.encodeCall(
             DAO.execute,
             (bytes32(uint256(1)), _actions, 0)
@@ -760,18 +679,16 @@ contract ExecuteSelectorConditionTest is AragonTest {
         );
 
         // 2 all targets off
-        _actions = new IDAO.Action[](4);
+        _actions = new Action[](4);
         _actions[0].data = abi.encodeCall(DAO.setMetadata, ("hi"));
         _actions[0].to = carol;
-        _actions[1].data = abi.encodeCall(DAO.setSignatureValidator, (bob));
-        _actions[1].to = carol;
-        _actions[2].data = abi.encodeCall(
+        _actions[1].data = abi.encodeCall(
             DAO.registerStandardCallback,
             (bytes4(uint32(1)), bytes4(uint32(2)), bytes4(uint32(3)))
         );
+        _actions[1].to = carol;
+        _actions[2].data = abi.encodeCall(DAO.setTrustedForwarder, (carol));
         _actions[2].to = carol;
-        _actions[3].data = abi.encodeCall(DAO.setTrustedForwarder, (carol));
-        _actions[3].to = carol;
 
         _calldata = abi.encodeCall(
             DAO.execute,
@@ -866,19 +783,17 @@ contract ExecuteSelectorConditionTest is AragonTest {
             memory _targets = new ExecuteSelectorCondition.InitialTarget[](4);
         _targets[0].selector = DAO.setMetadata.selector;
         _targets[0].target = address(dao);
-        _targets[1].selector = DAO.setSignatureValidator.selector;
+        _targets[1].selector = DAO.registerStandardCallback.selector;
         _targets[1].target = address(dao);
-        _targets[2].selector = DAO.registerStandardCallback.selector;
+        _targets[2].selector = DAO.setTrustedForwarder.selector;
         _targets[2].target = address(dao);
-        _targets[3].selector = DAO.setTrustedForwarder.selector;
-        _targets[3].target = address(dao);
 
         executeSelectorCondition = ExecuteSelectorCondition(
             factory.deployExecuteSelectorCondition(dao, _targets)
         );
 
         // 1 no actions
-        IDAO.Action[] memory _actions = new IDAO.Action[](0);
+        Action[] memory _actions = new Action[](0);
         bytes memory _calldata = abi.encodeCall(
             DAO.execute,
             (bytes32(uint256(1)), _actions, 0)
@@ -893,21 +808,19 @@ contract ExecuteSelectorConditionTest is AragonTest {
         );
 
         // 2 all targets match
-        _actions = new IDAO.Action[](4);
+        _actions = new Action[](4);
         _actions[0].data = abi.encodeCall(DAO.setMetadata, ("hi"));
         _actions[0].to = address(dao);
-        _actions[1].data = abi.encodeCall(DAO.setSignatureValidator, (bob));
-        _actions[1].to = address(dao);
-        _actions[2].data = abi.encodeCall(
+        _actions[1].data = abi.encodeCall(
             DAO.registerStandardCallback,
             (bytes4(uint32(1)), bytes4(uint32(2)), bytes4(uint32(3)))
         );
-        _actions[2].to = address(dao);
-        _actions[3].data = abi.encodeCall(
+        _actions[1].to = address(dao);
+        _actions[2].data = abi.encodeCall(
             DAO.setTrustedForwarder,
             (address(dao))
         );
-        _actions[3].to = address(dao);
+        _actions[2].to = address(dao);
 
         _calldata = abi.encodeCall(
             DAO.execute,

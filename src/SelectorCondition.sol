@@ -10,7 +10,7 @@ import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
 /// @title SelectorCondition
 /// @author AragonX 2025
 /// @notice A permission that only allows a specified group of function selectors to be invoked within DAO.execute()
-contract SelectorCondition is ERC165, DaoAuthorizable, IPermissionCondition {
+contract SelectorCondition is ERC165, IPermissionCondition, DaoAuthorizable {
     mapping(bytes4 => bool) public allowedSelectors;
 
     bytes32 immutable MANAGE_SELECTORS_PERMISSION_ID =

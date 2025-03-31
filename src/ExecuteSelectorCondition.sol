@@ -13,8 +13,8 @@ import {IExecutor, Action} from "@aragon/osx-commons-contracts/src/executors/IEx
 /// @notice A permission that only allows a specified group of function selectors to be invoked within DAO.execute()
 contract ExecuteSelectorCondition is
     ERC165,
-    DaoAuthorizable,
-    IPermissionCondition
+    IPermissionCondition,
+    DaoAuthorizable
 {
     struct InitialTarget {
         bytes4 selector;

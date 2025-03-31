@@ -85,7 +85,7 @@ contract ExecuteSelectorCondition is
         address _who,
         bytes32 _permissionId,
         bytes calldata _data
-    ) external view virtual returns (bool isPermitted) {
+    ) public view virtual returns (bool isPermitted) {
         (_where, _who, _permissionId);
 
         // Is it execute()?

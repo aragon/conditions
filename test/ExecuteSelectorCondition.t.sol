@@ -11,7 +11,7 @@ import {DaoUnauthorized} from "@aragon/osx-commons-contracts/src/permission/auth
 import {IPermissionCondition} from "@aragon/osx-commons-contracts/src/permission/condition/IPermissionCondition.sol";
 import {IERC165Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/introspection/IERC165Upgradeable.sol";
 import {ExecuteSelectorCondition} from "../src/ExecuteSelectorCondition.sol";
-import {ConditionFactory} from "../../src/factory/ConditionFactory.sol";
+import {ConditionFactory} from "../src/factory/ConditionFactory.sol";
 import {EXECUTE_PERMISSION_ID, SET_METADATA_PERMISSION_ID, SET_SIGNATURE_VALIDATOR_PERMISSION_ID, REGISTER_STANDARD_CALLBACK_PERMISSION_ID, SET_TRUSTED_FORWARDER_PERMISSION_ID, MANAGE_SELECTORS_PERMISSION_ID} from "./constants.sol";
 
 contract ExecuteSelectorConditionTest is AragonTest {

@@ -36,6 +36,8 @@ help: ## Display the current message
 	@cat Makefile | while IFS= read -r line; do \
 	   if [[ "$$line" == "##" ]]; then \
 			echo "" ; \
+		elif [[ "$$line" =~ ^##\ (.*)$$ ]]; then \
+			echo -e "\n$${BASH_REMATCH[1]}\n" ; \
 		elif [[ "$$line" =~ ^([^:]+):(.*)##\ (.*)$$ ]]; then \
 			echo -e "- make $${BASH_REMATCH[1]}    \t$${BASH_REMATCH[3]}" ; \
 		fi ; \
@@ -128,9 +130,7 @@ $(TEST_TREE_FILES): $(TEST_SOURCE_FILES)
 	cp .env.example .env
 	@echo "NOTE: Edit the correct values of .env before you continue"
 
-##
-
-#### Deployment targets ####
+## Deployment targets:
 
 %-testnet: export RPC_URL = $(TESTNET_RPC_URL)
 %-testnet: export NETWORK = $(TESTNET_NETWORK)

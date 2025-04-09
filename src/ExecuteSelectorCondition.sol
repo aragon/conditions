@@ -16,67 +16,49 @@ contract ExecuteSelectorCondition is
     IPermissionCondition,
     DaoAuthorizable
 {
-    struct InitialTarget {
-        bytes4 selector;
-        address target;
+    struct SelectorTarget {
+        address where;
+        bytes4[] selectors;
     }
     /// @notice Stores whether the given address and selector are allowed
-    /// @dev allowedTargets[where][selector]
-    mapping(address => mapping(bytes4 => bool)) public allowedTargets;
+    /// @dev allowedSelectors[where][selector]
+    mapping(address => mapping(bytes4 => bool)) public allowedSelectors;
 
     bytes32 public constant MANAGE_SELECTORS_PERMISSION_ID =
         keccak256("MANAGE_SELECTORS_PERMISSION");
 
-    error AlreadyAllowed(bytes4 selector, address target);
-    error AlreadyDisallowed(bytes4 selector, address target);
+    error AlreadyAllowed(bytes4 selector, address where);
+    error AlreadyDisallowed(bytes4 selector, address where);
 
-    event SelectorAllowed(bytes4 selector, address target);
-    event SelectorDisallowed(bytes4 selector, address target);
+    event SelectorAllowed(bytes4 selector, address where);
+    event SelectorDisallowed(bytes4 selector, address where);
 
     /// @notice Disables the initializers on the implementation contract to prevent it from being left uninitialized.
+    /// @param _dao The address of the DAO where the contract should read the permissions from
+    /// @param _initialEntries The list of allowed selectors and the addresses where they can be invoked
     constructor(
         IDAO _dao,
-        InitialTarget[] memory _initialTargets
+        SelectorTarget[] memory _initialEntries
     ) DaoAuthorizable(_dao) {
-        for (uint256 i; i < _initialTargets.length; i++) {
-            allowedTargets[_initialTargets[i].target][
-                _initialTargets[i].selector
-            ] = true;
-            emit SelectorAllowed(
-                _initialTargets[i].selector,
-                _initialTargets[i].target
-            );
+        for (uint256 i; i < _initialEntries.length; i++) {
+            _allowSelectors(_initialEntries[i], false);
         }
     }
 
-    /// @notice Marks the given selector as allowed
-    /// @param _selector The function selector to start allowing
-    /// @param _target The target address where the selector can be invoked
-    function allowSelector(
-        bytes4 _selector,
-        address _target
+    /// @notice Marks the given selectors as allowed on the given where address
+    /// @param _newEntry The new selectors and the address where they can be invoked
+    function allowSelectors(
+        SelectorTarget memory _newEntry
     ) public virtual auth(MANAGE_SELECTORS_PERMISSION_ID) {
-        if (allowedTargets[_target][_selector]) {
-            revert AlreadyAllowed(_selector, _target);
-        }
-        allowedTargets[_target][_selector] = true;
-
-        emit SelectorAllowed(_selector, _target);
+        _allowSelectors(_newEntry, true);
     }
 
-    /// @notice Marks the given selector as disallowed
-    /// @param _selector The function selector to stop allowing
-    /// @param _target The target address where the selector can no longer be invoked
-    function disallowSelector(
-        bytes4 _selector,
-        address _target
+    /// @notice Marks the given selector(s) as disallowed
+    /// @param _entry The selectors to remove and the address where they can no longer be invoked
+    function disallowSelectors(
+        SelectorTarget memory _entry
     ) public virtual auth(MANAGE_SELECTORS_PERMISSION_ID) {
-        if (!allowedTargets[_target][_selector]) {
-            revert AlreadyDisallowed(_selector, _target);
-        }
-        allowedTargets[_target][_selector] = false;
-
-        emit SelectorDisallowed(_selector, _target);
+        _disallowSelectors(_entry);
     }
 
     /// @inheritdoc IPermissionCondition
@@ -100,7 +82,9 @@ contract ExecuteSelectorCondition is
         );
         for (uint256 i; i < _actions.length; i++) {
             if (
-                !allowedTargets[_actions[i].to][_getSelector(_actions[i].data)]
+                !allowedSelectors[_actions[i].to][
+                    _getSelector(_actions[i].data)
+                ]
             ) {
                 return false;
             }
@@ -120,6 +104,32 @@ contract ExecuteSelectorCondition is
     }
 
     // Internal helpers
+
+    function _allowSelectors(
+        SelectorTarget memory _newEntry,
+        bool _revertIfAlreadyAllowed
+    ) internal virtual {
+        for (uint256 i; i < _newEntry.selectors.length; i++) {
+            if (
+                _revertIfAlreadyAllowed &&
+                allowedSelectors[_newEntry.where][_newEntry.selectors[i]]
+            ) {
+                revert AlreadyAllowed(_newEntry.selectors[i], _newEntry.where);
+            }
+            allowedSelectors[_newEntry.where][_newEntry.selectors[i]] = true;
+            emit SelectorAllowed(_newEntry.selectors[i], _newEntry.where);
+        }
+    }
+
+    function _disallowSelectors(SelectorTarget memory _entry) internal virtual {
+        for (uint256 i; i < _entry.selectors.length; i++) {
+            if (!allowedSelectors[_entry.where][_entry.selectors[i]]) {
+                revert AlreadyDisallowed(_entry.selectors[i], _entry.where);
+            }
+            allowedSelectors[_entry.where][_entry.selectors[i]] = false;
+            emit SelectorDisallowed(_entry.selectors[i], _entry.where);
+        }
+    }
 
     function _getSelector(
         bytes memory _data

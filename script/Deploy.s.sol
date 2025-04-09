@@ -26,15 +26,15 @@ contract Deploy is Script {
         ConditionFactory factory = new ConditionFactory();
 
         // Deploy dummy instances to force verifying the source
-        ExecuteSelectorCondition.InitialTarget[]
-            memory initialTargets = new ExecuteSelectorCondition.InitialTarget[](
+        ExecuteSelectorCondition.SelectorTarget[]
+            memory initialEntries = new ExecuteSelectorCondition.SelectorTarget[](
                 0
             );
         bytes4[] memory selectors = new bytes4[](0);
 
         factory.deployExecuteSelectorCondition(
             IDAO(address(0)),
-            initialTargets
+            initialEntries
         );
         factory.deploySelectorCondition(IDAO(address(0)), selectors);
 

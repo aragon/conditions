@@ -15,7 +15,7 @@ contract DaoBuilder is Test {
 
     address internal owner = ALICE_ADDRESS;
     bytes4[] internal initialSelectors;
-    ExecuteSelectorCondition.InitialTarget[] internal initialExecuteTargets;
+    ExecuteSelectorCondition.SelectorTarget[] internal initialExecuteTargets;
 
     function withDaoOwner(address newOwner) public returns (DaoBuilder) {
         owner = newOwner;
@@ -30,15 +30,10 @@ contract DaoBuilder is Test {
     }
 
     function withInitialExecuteTargets(
-        ExecuteSelectorCondition.InitialTarget[] memory _initialExecuteTargets
+        ExecuteSelectorCondition.SelectorTarget[] memory _initialExecuteTargets
     ) public returns (DaoBuilder) {
         for (uint256 i; i < _initialExecuteTargets.length; i++) {
-            initialExecuteTargets.push(
-                ExecuteSelectorCondition.InitialTarget(
-                    _initialExecuteTargets[i].selector,
-                    _initialExecuteTargets[i].target
-                )
-            );
+            initialExecuteTargets.push(_initialExecuteTargets[i]);
         }
         return this;
     }

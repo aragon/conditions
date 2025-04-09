@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.22;
 
 import {Test} from "forge-std/Test.sol";
 import {DAO} from "@aragon/osx/core/dao/DAO.sol";
-import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
+import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
 import {ALICE_ADDRESS, BOB_ADDRESS} from "../constants.sol";
 import {ExecuteSelectorCondition} from "../../src/ExecuteSelectorCondition.sol";
 import {SelectorCondition} from "../../src/SelectorCondition.sol";
@@ -15,7 +15,7 @@ contract DaoBuilder is Test {
 
     address internal owner = ALICE_ADDRESS;
     bytes4[] internal initialSelectors;
-    ExecuteSelectorCondition.InitialTarget[] internal initialExecuteTargets;
+    ExecuteSelectorCondition.SelectorTarget[] internal initialExecuteTargets;
 
     function withDaoOwner(address newOwner) public returns (DaoBuilder) {
         owner = newOwner;
@@ -30,19 +30,10 @@ contract DaoBuilder is Test {
     }
 
     function withInitialExecuteTargets(
-        ExecuteSelectorCondition.InitialTarget[] memory _initialExecuteTargets
+        ExecuteSelectorCondition.SelectorTarget[] memory _initialExecuteTargets
     ) public returns (DaoBuilder) {
-        for (uint256 i; i < _initialExecuteTargets.length; ) {
-            initialExecuteTargets.push(
-                ExecuteSelectorCondition.InitialTarget(
-                    _initialExecuteTargets[i].selector,
-                    _initialExecuteTargets[i].target
-                )
-            );
-
-            unchecked {
-                i++;
-            }
+        for (uint256 i; i < _initialExecuteTargets.length; i++) {
+            initialExecuteTargets.push(_initialExecuteTargets[i]);
         }
         return this;
     }

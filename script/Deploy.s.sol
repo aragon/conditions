@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.22;
 
 import {Script, console} from "forge-std/Script.sol";
 import {ConditionFactory} from "../src/factory/ConditionFactory.sol";
 import {ExecuteSelectorCondition} from "../src/ExecuteSelectorCondition.sol";
 import {SelectorCondition} from "../src/SelectorCondition.sol";
-import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
+import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
 
 contract Deploy is Script {
     modifier broadcast() {
@@ -26,15 +26,15 @@ contract Deploy is Script {
         ConditionFactory factory = new ConditionFactory();
 
         // Deploy dummy instances to force verifying the source
-        ExecuteSelectorCondition.InitialTarget[]
-            memory initialTargets = new ExecuteSelectorCondition.InitialTarget[](
+        ExecuteSelectorCondition.SelectorTarget[]
+            memory initialEntries = new ExecuteSelectorCondition.SelectorTarget[](
                 0
             );
         bytes4[] memory selectors = new bytes4[](0);
 
         factory.deployExecuteSelectorCondition(
             IDAO(address(0)),
-            initialTargets
+            initialEntries
         );
         factory.deploySelectorCondition(IDAO(address(0)), selectors);
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.22;
 
 bytes32 constant EXECUTE_PERMISSION_ID = keccak256("EXECUTE_PERMISSION");
 bytes32 constant SET_METADATA_PERMISSION_ID = keccak256(

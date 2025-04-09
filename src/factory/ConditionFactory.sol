@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.22;
 
-import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
+import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
 import {ExecuteSelectorCondition} from "../ExecuteSelectorCondition.sol";
 import {SelectorCondition} from "../SelectorCondition.sol";
 
@@ -11,9 +11,9 @@ import {SelectorCondition} from "../SelectorCondition.sol";
 contract ConditionFactory {
     function deployExecuteSelectorCondition(
         IDAO _dao,
-        ExecuteSelectorCondition.InitialTarget[] memory _initialExecuteTargets
+        ExecuteSelectorCondition.SelectorTarget[] memory _initialEntries
     ) public returns (ExecuteSelectorCondition) {
-        return new ExecuteSelectorCondition(_dao, _initialExecuteTargets);
+        return new ExecuteSelectorCondition(_dao, _initialEntries);
     }
 
     function deploySelectorCondition(

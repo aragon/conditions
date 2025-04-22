@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.22;
 
 import {Script, console} from "forge-std/Script.sol";
-import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
+import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
 import {ExecuteSelectorCondition} from "../src/ExecuteSelectorCondition.sol";
 import {SelectorCondition} from "../src/SelectorCondition.sol";
 
@@ -24,15 +24,15 @@ contract Create is Script {
         console.log("Chain ID:", block.chainid);
         console.log("");
 
-        ExecuteSelectorCondition.InitialTarget[]
-            memory initialTargets = new ExecuteSelectorCondition.InitialTarget[](
+        ExecuteSelectorCondition.SelectorTarget[]
+            memory initialEntries = new ExecuteSelectorCondition.SelectorTarget[](
                 0
             );
         bytes4[] memory selectors = new bytes4[](0);
 
         ExecuteSelectorCondition esc = new ExecuteSelectorCondition(
             dao,
-            initialTargets
+            initialEntries
         );
         SelectorCondition sc = new SelectorCondition(dao, selectors);
 

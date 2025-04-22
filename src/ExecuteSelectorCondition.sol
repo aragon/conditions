@@ -1,76 +1,64 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.22;
 
 import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
-import {DaoAuthorizable} from "@aragon/osx/core/plugin/dao-authorizable/DaoAuthorizable.sol";
-import {IPermissionCondition} from "@aragon/osx/core/permission/IPermissionCondition.sol";
-import {IDAO} from "@aragon/osx/core/dao/IDAO.sol";
+import {DaoAuthorizable} from "@aragon/osx-commons-contracts/src/permission/auth/DaoAuthorizable.sol";
+import {IPermissionCondition} from "@aragon/osx-commons-contracts/src/permission/condition/IPermissionCondition.sol";
+import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
+import {IExecutor, Action} from "@aragon/osx-commons-contracts/src/executors/IExecutor.sol";
 
 /// @title ExecuteSelectorCondition
 /// @author AragonX 2025
 /// @notice A permission that only allows a specified group of function selectors to be invoked within DAO.execute()
 contract ExecuteSelectorCondition is
     ERC165,
-    DaoAuthorizable,
-    IPermissionCondition
+    IPermissionCondition,
+    DaoAuthorizable
 {
-    struct InitialTarget {
-        bytes4 selector;
-        address target;
+    struct SelectorTarget {
+        address where;
+        bytes4[] selectors;
     }
     /// @notice Stores whether the given address and selector are allowed
-    /// @dev allowedTargets[where][selector]
-    mapping(address => mapping(bytes4 => bool)) public allowedTargets;
+    /// @dev allowedSelectors[where][selector]
+    mapping(address => mapping(bytes4 => bool)) public allowedSelectors;
 
-    bytes32 immutable MANAGE_SELECTORS_PERMISSION_ID =
+    bytes32 public constant MANAGE_SELECTORS_PERMISSION_ID =
         keccak256("MANAGE_SELECTORS_PERMISSION");
 
-    error AlreadyAllowed();
-    error AlreadyDisallowed();
+    error AlreadyAllowed(bytes4 selector, address where);
+    error AlreadyDisallowed(bytes4 selector, address where);
 
-    event SelectorAllowed(bytes4 selector, address target);
-    event SelectorDisallowed(bytes4 selector, address target);
+    event SelectorAllowed(bytes4 selector, address where);
+    event SelectorDisallowed(bytes4 selector, address where);
 
-    /// @notice Disables the initializers on the implementation contract to prevent it from being left uninitialized.
+    /// @notice Configures a new instance with the given set of allowed selectors
+    /// @param _dao The address of the DAO where the contract should read the permissions from
+    /// @param _initialEntries The list of allowed selectors and the addresses where they can be invoked
     constructor(
         IDAO _dao,
-        InitialTarget[] memory _initialTargets
+        SelectorTarget[] memory _initialEntries
     ) DaoAuthorizable(_dao) {
-        for (uint256 i; i < _initialTargets.length; ) {
-            allowedTargets[_initialTargets[i].target][
-                _initialTargets[i].selector
-            ] = true;
-            unchecked {
-                i++;
-            }
+        for (uint256 i; i < _initialEntries.length; i++) {
+            _allowSelectors(_initialEntries[i]);
         }
     }
 
-    /// @notice Marks the given selector as allowed
-    /// @param _selector The function selector to start allowing
-    /// @param _target The target address where the selector can be invoked
-    function allowSelector(
-        bytes4 _selector,
-        address _target
-    ) public auth(MANAGE_SELECTORS_PERMISSION_ID) {
-        if (allowedTargets[_target][_selector]) revert AlreadyAllowed();
-        allowedTargets[_target][_selector] = true;
-
-        emit SelectorAllowed(_selector, _target);
+    /// @notice Marks the given selectors as allowed on the given where address
+    /// @param _newEntry The new selectors and the address where they can be invoked
+    function allowSelectors(
+        SelectorTarget memory _newEntry
+    ) public virtual auth(MANAGE_SELECTORS_PERMISSION_ID) {
+        _allowSelectors(_newEntry);
     }
 
-    /// @notice Marks the given selector as disallowed
-    /// @param _selector The function selector to stop allowing
-    /// @param _target The target address where the selector can no longer be invoked
-    function disallowSelector(
-        bytes4 _selector,
-        address _target
-    ) public auth(MANAGE_SELECTORS_PERMISSION_ID) {
-        if (!allowedTargets[_target][_selector]) revert AlreadyDisallowed();
-        allowedTargets[_target][_selector] = false;
-
-        emit SelectorDisallowed(_selector, _target);
+    /// @notice Marks the given selector(s) as disallowed
+    /// @param _entry The selectors to remove and the address where they can no longer be invoked
+    function disallowSelectors(
+        SelectorTarget memory _entry
+    ) public virtual auth(MANAGE_SELECTORS_PERMISSION_ID) {
+        _disallowSelectors(_entry);
     }
 
     /// @inheritdoc IPermissionCondition
@@ -79,24 +67,26 @@ contract ExecuteSelectorCondition is
         address _who,
         bytes32 _permissionId,
         bytes calldata _data
-    ) external view returns (bool isPermitted) {
+    ) public view virtual returns (bool isPermitted) {
         (_where, _who, _permissionId);
 
         // Is it execute()?
-        if (_getSelector(_data) != IDAO.execute.selector) {
+        if (_getSelector(_data) != IExecutor.execute.selector) {
             return false;
         }
 
         // Decode proposal params
-        (, IDAO.Action[] memory _actions, ) = abi.decode(
+        (, Action[] memory _actions, ) = abi.decode(
             _data[4:],
-            (bytes32, IDAO.Action[], uint256)
+            (bytes32, Action[], uint256)
         );
-        for (uint256 i; i < _actions.length; ) {
-            if (!allowedTargets[_actions[i].to][_getSelector(_actions[i].data)])
+        for (uint256 i; i < _actions.length; i++) {
+            if (
+                !allowedSelectors[_actions[i].to][
+                    _getSelector(_actions[i].data)
+                ]
+            ) {
                 return false;
-            unchecked {
-                i++;
             }
         }
         return true;
@@ -114,6 +104,26 @@ contract ExecuteSelectorCondition is
     }
 
     // Internal helpers
+
+    function _allowSelectors(SelectorTarget memory _newEntry) internal virtual {
+        for (uint256 i; i < _newEntry.selectors.length; i++) {
+            if (allowedSelectors[_newEntry.where][_newEntry.selectors[i]]) {
+                revert AlreadyAllowed(_newEntry.selectors[i], _newEntry.where);
+            }
+            allowedSelectors[_newEntry.where][_newEntry.selectors[i]] = true;
+            emit SelectorAllowed(_newEntry.selectors[i], _newEntry.where);
+        }
+    }
+
+    function _disallowSelectors(SelectorTarget memory _entry) internal virtual {
+        for (uint256 i; i < _entry.selectors.length; i++) {
+            if (!allowedSelectors[_entry.where][_entry.selectors[i]]) {
+                revert AlreadyDisallowed(_entry.selectors[i], _entry.where);
+            }
+            allowedSelectors[_entry.where][_entry.selectors[i]] = false;
+            emit SelectorDisallowed(_entry.selectors[i], _entry.where);
+        }
+    }
 
     function _getSelector(
         bytes memory _data

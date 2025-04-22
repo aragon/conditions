@@ -6,7 +6,7 @@ libs = ["lib"]
 evm_version = "cancun"
 optimizer = true
 optimizer-runs = 200
-solc = "0.8.17"
+solc = "0.8.23"
 via_ir = false
 
 [rpc_endpoints]

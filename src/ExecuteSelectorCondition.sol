@@ -33,7 +33,7 @@ contract ExecuteSelectorCondition is
     event SelectorAllowed(bytes4 selector, address where);
     event SelectorDisallowed(bytes4 selector, address where);
 
-    /// @notice Disables the initializers on the implementation contract to prevent it from being left uninitialized.
+    /// @notice Configures a new instance with the given set of allowed selectors
     /// @param _dao The address of the DAO where the contract should read the permissions from
     /// @param _initialEntries The list of allowed selectors and the addresses where they can be invoked
     constructor(
@@ -41,7 +41,7 @@ contract ExecuteSelectorCondition is
         SelectorTarget[] memory _initialEntries
     ) DaoAuthorizable(_dao) {
         for (uint256 i; i < _initialEntries.length; i++) {
-            _allowSelectors(_initialEntries[i], false);
+            _allowSelectors(_initialEntries[i]);
         }
     }
 
@@ -50,7 +50,7 @@ contract ExecuteSelectorCondition is
     function allowSelectors(
         SelectorTarget memory _newEntry
     ) public virtual auth(MANAGE_SELECTORS_PERMISSION_ID) {
-        _allowSelectors(_newEntry, true);
+        _allowSelectors(_newEntry);
     }
 
     /// @notice Marks the given selector(s) as disallowed
@@ -105,15 +105,9 @@ contract ExecuteSelectorCondition is
 
     // Internal helpers
 
-    function _allowSelectors(
-        SelectorTarget memory _newEntry,
-        bool _revertIfAlreadyAllowed
-    ) internal virtual {
+    function _allowSelectors(SelectorTarget memory _newEntry) internal virtual {
         for (uint256 i; i < _newEntry.selectors.length; i++) {
-            if (
-                _revertIfAlreadyAllowed &&
-                allowedSelectors[_newEntry.where][_newEntry.selectors[i]]
-            ) {
+            if (allowedSelectors[_newEntry.where][_newEntry.selectors[i]]) {
                 revert AlreadyAllowed(_newEntry.selectors[i], _newEntry.where);
             }
             allowedSelectors[_newEntry.where][_newEntry.selectors[i]] = true;

@@ -22,7 +22,6 @@ contract SelectorCondition is ERC165, IPermissionCondition, DaoAuthorizable {
     event SelectorAllowed(bytes4 selector);
     event SelectorDisallowed(bytes4 selector);
 
-    /// @notice Disables the initializers on the implementation contract to prevent it from being left uninitialized.
     constructor(
         IDAO _dao,
         bytes4[] memory _initialSelectors

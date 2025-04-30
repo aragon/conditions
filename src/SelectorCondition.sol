@@ -6,6 +6,7 @@ import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import {DaoAuthorizable} from "@aragon/osx-commons-contracts/src/permission/auth/DaoAuthorizable.sol";
 import {IPermissionCondition} from "@aragon/osx-commons-contracts/src/permission/condition/IPermissionCondition.sol";
 import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
+import {getSelector} from "./lib/common.sol";
 
 /// @title SelectorCondition
 /// @author AragonX 2025
@@ -63,7 +64,7 @@ contract SelectorCondition is ERC165, IPermissionCondition, DaoAuthorizable {
     ) public view virtual returns (bool isPermitted) {
         (_where, _who, _permissionId);
 
-        return allowedSelectors[_getSelector(_data)];
+        return allowedSelectors[getSelector(_data)];
     }
 
     /// @notice Checks if an interface is supported by this or its parent contract.
@@ -75,17 +76,5 @@ contract SelectorCondition is ERC165, IPermissionCondition, DaoAuthorizable {
         return
             _interfaceId == type(IPermissionCondition).interfaceId ||
             super.supportsInterface(_interfaceId);
-    }
-
-    // Internal helpers
-
-    function _getSelector(
-        bytes memory _data
-    ) internal pure returns (bytes4 selector) {
-        // Slices are only supported for bytes calldata, not bytes memory
-        // Bytes memory requires an assembly block
-        assembly {
-            selector := mload(add(_data, 0x20)) // 32
-        }
     }
 }

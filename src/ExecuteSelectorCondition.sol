@@ -7,6 +7,7 @@ import {DaoAuthorizable} from "@aragon/osx-commons-contracts/src/permission/auth
 import {IPermissionCondition} from "@aragon/osx-commons-contracts/src/permission/condition/IPermissionCondition.sol";
 import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
 import {IExecutor, Action} from "@aragon/osx-commons-contracts/src/executors/IExecutor.sol";
+import {getSelector} from "./lib/common.sol";
 
 /// @title ExecuteSelectorCondition
 /// @author AragonX 2025
@@ -71,7 +72,7 @@ contract ExecuteSelectorCondition is
         (_where, _who, _permissionId);
 
         // Is it execute()?
-        if (_getSelector(_data) != IExecutor.execute.selector) {
+        if (getSelector(_data) != IExecutor.execute.selector) {
             return false;
         }
 
@@ -82,9 +83,7 @@ contract ExecuteSelectorCondition is
         );
         for (uint256 i; i < _actions.length; i++) {
             if (
-                !allowedSelectors[_actions[i].to][
-                    _getSelector(_actions[i].data)
-                ]
+                !allowedSelectors[_actions[i].to][getSelector(_actions[i].data)]
             ) {
                 return false;
             }
@@ -122,16 +121,6 @@ contract ExecuteSelectorCondition is
             }
             allowedSelectors[_entry.where][_entry.selectors[i]] = false;
             emit SelectorDisallowed(_entry.selectors[i], _entry.where);
-        }
-    }
-
-    function _getSelector(
-        bytes memory _data
-    ) internal pure returns (bytes4 selector) {
-        // Slices are only supported for bytes calldata, not bytes memory
-        // Bytes memory requires an assembly block
-        assembly {
-            selector := mload(add(_data, 0x20)) // 32
         }
     }
 }

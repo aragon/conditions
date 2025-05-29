@@ -87,7 +87,9 @@ contract ExecuteSelectorCondition is
             (bytes32, Action[], uint256)
         );
         for (uint256 i; i < _actions.length; i++) {
-            if (
+            if (_actions[i].data.length != 0 && _actions[i].data.length < 4) {
+                return false;
+            } else if (
                 !allowedSelectors[_actions[i].to][getSelector(_actions[i].data)]
             ) {
                 return false;

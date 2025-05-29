@@ -17,10 +17,15 @@ contract ExecuteSelectorCondition is
     IPermissionCondition,
     DaoAuthorizable
 {
+    /// @notice Contains a list of selectors for the given target (where) address
     struct SelectorTarget {
+        /// @notice The address where the selectors below can be invoked
         address where;
+        /// @notice The list of function selectors that can be invoked within an execute() call.
+        /// @notice Plain eth transfers should contain 0 as a selector.
         bytes4[] selectors;
     }
+
     /// @notice Stores whether the given address and selector are allowed
     /// @dev allowedSelectors[where][selector]
     mapping(address => mapping(bytes4 => bool)) public allowedSelectors;
@@ -82,7 +87,9 @@ contract ExecuteSelectorCondition is
             (bytes32, Action[], uint256)
         );
         for (uint256 i; i < _actions.length; i++) {
-            if (
+            if (_actions[i].data.length != 0 && _actions[i].data.length < 4) {
+                return false;
+            } else if (
                 !allowedSelectors[_actions[i].to][getSelector(_actions[i].data)]
             ) {
                 return false;

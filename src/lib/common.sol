@@ -4,8 +4,7 @@ pragma solidity ^0.8.22;
 
 /// @notice Extracts the selector given the calldata. If no calldata is passed, it returns zero
 function getSelector(bytes memory _data) pure returns (bytes4 selector) {
-    // Ether transfers have no selector
-    if (_data.length < 4) return bytes4(0);
+    if (_data.length < 4) revert("Data is too short");
 
     // Slices are only supported for bytes calldata, not bytes memory
     // Bytes memory requires an assembly block

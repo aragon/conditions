@@ -1045,7 +1045,7 @@ contract ExecuteSelectorConditionTest is AragonTest {
         // KO
         vm.expectRevert(
             abi.encodeWithSelector(
-                ExecuteSelectorCondition.AlreadyAllowed.selector,
+                ExecuteSelectorCondition.SelectorAlreadyAllowed.selector,
                 bytes4(uint32(1)),
                 address(this)
             )
@@ -1054,7 +1054,7 @@ contract ExecuteSelectorConditionTest is AragonTest {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                ExecuteSelectorCondition.AlreadyAllowed.selector,
+                ExecuteSelectorCondition.SelectorAlreadyAllowed.selector,
                 bytes4(uint32(2)),
                 address(dao)
             )
@@ -1246,7 +1246,7 @@ contract ExecuteSelectorConditionTest is AragonTest {
         vm.startPrank(bob);
         vm.expectRevert(
             abi.encodeWithSelector(
-                ExecuteSelectorCondition.AlreadyDisallowed.selector,
+                ExecuteSelectorCondition.SelectorAlreadyDisallowed.selector,
                 bytes4(uint32(1)),
                 address(this)
             )
@@ -1255,7 +1255,7 @@ contract ExecuteSelectorConditionTest is AragonTest {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                ExecuteSelectorCondition.AlreadyDisallowed.selector,
+                ExecuteSelectorCondition.SelectorAlreadyDisallowed.selector,
                 DAO.execute.selector,
                 address(dao)
             )
@@ -1264,7 +1264,7 @@ contract ExecuteSelectorConditionTest is AragonTest {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                ExecuteSelectorCondition.AlreadyDisallowed.selector,
+                ExecuteSelectorCondition.SelectorAlreadyDisallowed.selector,
                 DAO.setMetadata.selector,
                 address(dao)
             )

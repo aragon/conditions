@@ -22,16 +22,15 @@ contract DaoBuilder is Test {
         return this;
     }
 
-    function withSelectors(
-        bytes4[] memory _initialSelectors
-    ) public returns (DaoBuilder) {
+    function withSelectors(bytes4[] memory _initialSelectors) public returns (DaoBuilder) {
         initialSelectors = _initialSelectors;
         return this;
     }
 
-    function withInitialExecuteTargets(
-        ExecuteSelectorCondition.SelectorTarget[] memory _initialExecuteTargets
-    ) public returns (DaoBuilder) {
+    function withInitialExecuteTargets(ExecuteSelectorCondition.SelectorTarget[] memory _initialExecuteTargets)
+        public
+        returns (DaoBuilder)
+    {
         for (uint256 i; i < _initialExecuteTargets.length; i++) {
             initialExecuteTargets.push(_initialExecuteTargets[i]);
         }
@@ -53,11 +52,7 @@ contract DaoBuilder is Test {
         dao = DAO(
             payable(
                 createProxyAndCall(
-                    address(DAO_BASE),
-                    abi.encodeCall(
-                        DAO.initialize,
-                        ("", address(this), address(0x0), "")
-                    )
+                    address(DAO_BASE), abi.encodeCall(DAO.initialize, ("", address(this), address(0x0), ""))
                 )
             )
         );
@@ -65,15 +60,9 @@ contract DaoBuilder is Test {
         // Deploy conditions
         factory = new ConditionFactory();
 
-        executeSelectorCondition = ExecuteSelectorCondition(
-            factory.deployExecuteSelectorCondition(
-                IDAO(dao),
-                initialExecuteTargets
-            )
-        );
-        selectorCondition = SelectorCondition(
-            factory.deploySelectorCondition(IDAO(dao), initialSelectors)
-        );
+        executeSelectorCondition =
+            ExecuteSelectorCondition(factory.deployExecuteSelectorCondition(IDAO(dao), initialExecuteTargets));
+        selectorCondition = SelectorCondition(factory.deploySelectorCondition(IDAO(dao), initialSelectors));
 
         // Transfer ownership to the owner
         dao.grant(address(dao), owner, dao.ROOT_PERMISSION_ID());

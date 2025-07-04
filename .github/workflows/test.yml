@@ -34,6 +34,11 @@ jobs:
         with:
           version: nightly
 
+      - name: Run format check
+        run: |
+          forge fmt --check
+        id: format-check
+
       - name: Run Forge build
         run: |
           forge --version

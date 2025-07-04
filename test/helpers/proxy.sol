@@ -3,9 +3,6 @@ pragma solidity ^0.8.22;
 
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-function createProxyAndCall(
-    address _logic,
-    bytes memory _data
-) returns (address) {
+function createProxyAndCall(address _logic, bytes memory _data) returns (address) {
     return address(new ERC1967Proxy(_logic, _data));
 }

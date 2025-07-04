@@ -1,60 +1,126 @@
 ExecuteSelectorConditionTest:
   - when: deploying the contract
     then:
-      - it: should set the given DAO
-      - it: should define the given selectors as allowed
-  - when: not calling execute
-    then:
-      - it: should revert
-  - when: calling execute
-    and:
-      - given: not all actions are allowed
-        then:
-          - it: should revert
-      - given: not all targets are allowed
-        then:
-          - it: should revert
-      - given: all actions are allowed
-        then:
-          - it: should allow execution
+      - it: should set the given DAO address
+      - it: should correctly initialize allowed selectors from _initialEntries
+      - it: should succeed with an empty _initialEntries array
+      - it: should succeed if _initialEntries contains duplicate selectors, ignoring the duplicates
+      - it: should succeed when _initialEntries contains an entry with an empty selectors array
+
   - when: calling isGranted
     and:
-      - given: not all actions are allowed
+      - given: the calldata is not for IExecutor.execute
         then:
           - it: should return false
-      - given: not all targets are allowed
-        then:
-          - it: return false
-      - given: all actions are allowed
-        then:
-          - it: should return true
-  - when: calling allowSelector
+      - given: the calldata is for IExecutor.execute
+        and:
+          - given: the actions array is empty
+            then:
+              - it: should return true
+          - given: an action has calldata length between 1 and 3 bytes
+            then:
+              - it: should return false
+          - given: a single action is a function call (value == 0)
+            and:
+              - given: the selector is allowed for the target
+                then:
+                  - it: should return true
+              - given: the selector is not allowed for the target
+                then:
+                  - it: should return false
+          - given: a single action is a function call with value > 0
+            and:
+              - given: the selector and ETH transfers are allowed for the target
+                then:
+                  - it: should return true
+              - given: the selector is allowed but ETH transfers are not
+                then:
+                  - it: should return false
+          - given: a single action is a pure ETH transfer (calldata is empty)
+            and:
+              - given: value > 0 and ETH transfers are allowed for the target
+                then:
+                  - it: should return true
+              - given: value > 0 and ETH transfers are not allowed for the target
+                then:
+                  - it: should return false
+              - given: value is 0
+                then:
+                  - it: should return false
+          - given: there are multiple actions
+            and:
+              - given: all actions are individually permitted
+                then:
+                  - it: should return true
+              - given: an allowed ETH transfer is followed by a disallowed function call
+                then:
+                  - it: should correctly return false
+
+  - when: calling allowSelectors
     and:
-      - given: the caller has no permission
+      - given: the caller does not have the MANAGE_SELECTORS_PERMISSION_ID
         then:
           - it: should revert
-      - given: the selector is already allowed
-        then:
-          - it: should revert
-      - given: the caller has permission
-        then:
-          - it: should succeed
-          - it: should emit an event
-          - it: allowedSelectors should return true
-  - when: calling removeSelector
+      - given: the caller has the MANAGE_SELECTORS_PERMISSION_ID
+        and:
+          - given: the entry contains only new, unallowed selectors
+            then:
+              - it: should succeed, update state, and emit a SelectorAllowed event for each selector
+          - given: the entry contains only selectors that are already allowed
+            then:
+              - it: should succeed silently without emitting any events or changing state
+          - given: the entry contains a mix of new and already-allowed selectors
+            then:
+              - it: should succeed and only update state and emit events for the new selectors
+
+  - when: calling disallowSelectors
     and:
-      - given: the caller has no permission
+      - given: the caller does not have the MANAGE_SELECTORS_PERMISSION_ID
         then:
           - it: should revert
-      - given: the selector is not allowed
+      - given: the caller has the MANAGE_SELECTORS_PERMISSION_ID
+        and:
+          - given: the entry contains selectors that are currently allowed
+            then:
+              - it: should succeed, update state, and emit a SelectorDisallowed event for each selector
+          - given: the entry contains only selectors that are already disallowed
+            then:
+              - it: should succeed silently without emitting any events or changing state
+          - given: the entry contains a mix of allowed and already-disallowed selectors
+            then:
+              - it: should succeed and only update state and emit events for the selectors that were actually allowed
+
+  - when: calling allowEthTransfers
+    and:
+      - given: the caller does not have the MANAGE_SELECTORS_PERMISSION_ID
         then:
           - it: should revert
-      - given: the caller has permission
+      - given: the caller has the MANAGE_SELECTORS_PERMISSION_ID
+        and:
+          - given: ETH transfers are not yet allowed for the target address
+            then:
+              - it: should succeed, update state, and emit an EthTransfersAllowed event
+          - given: ETH transfers are already allowed for the target address
+            then:
+              - it: should succeed silently without emitting an event or changing state
+
+  - when: calling disallowEthTransfers
+    and:
+      - given: the caller does not have the MANAGE_SELECTORS_PERMISSION_ID
         then:
-          - it: should succeed
-          - it: should emit an event
-          - it: allowedSelectors should return false
+          - it: should revert
+      - given: the caller has the MANAGE_SELECTORS_PERMISSION_ID
+        and:
+          - given: ETH transfers are currently allowed for the target address
+            then:
+              - it: should succeed, update state, and emit an EthTransfersDisallowed event
+          - given: ETH transfers are not currently allowed for the target address
+            then:
+              - it: should succeed silently without emitting an event or changing state
+
   - when: calling supportsInterface
-    and:
-      - it: does not support the empty interface
-      - it: supports IPermissionCondition
+    then:
+      - it: should return true for the IPermissionCondition interface ID
+      - it: should return true for the ERC165 interface ID
+      - it: should return false for a random interface ID
+      - it: should return false for the null interface ID (0xffffffff)

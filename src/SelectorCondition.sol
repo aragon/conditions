@@ -14,8 +14,7 @@ import {getSelector} from "./lib/common.sol";
 contract SelectorCondition is ERC165, IPermissionCondition, DaoAuthorizable {
     mapping(bytes4 => bool) public allowedSelectors;
 
-    bytes32 public constant MANAGE_SELECTORS_PERMISSION_ID =
-        keccak256("MANAGE_SELECTORS_PERMISSION");
+    bytes32 public constant MANAGE_SELECTORS_PERMISSION_ID = keccak256("MANAGE_SELECTORS_PERMISSION");
 
     error AlreadyAllowed(bytes4 selector);
     error AlreadyDisallowed(bytes4 selector);
@@ -23,10 +22,7 @@ contract SelectorCondition is ERC165, IPermissionCondition, DaoAuthorizable {
     event SelectorAllowed(bytes4 selector);
     event SelectorDisallowed(bytes4 selector);
 
-    constructor(
-        IDAO _dao,
-        bytes4[] memory _initialSelectors
-    ) DaoAuthorizable(_dao) {
+    constructor(IDAO _dao, bytes4[] memory _initialSelectors) DaoAuthorizable(_dao) {
         for (uint256 i; i < _initialSelectors.length; i++) {
             allowedSelectors[_initialSelectors[i]] = true;
             emit SelectorAllowed(_initialSelectors[i]);
@@ -35,9 +31,7 @@ contract SelectorCondition is ERC165, IPermissionCondition, DaoAuthorizable {
 
     /// @notice Marks the given selector as allowed
     /// @param _selector The function selector to start allowing
-    function allowSelector(
-        bytes4 _selector
-    ) public virtual auth(MANAGE_SELECTORS_PERMISSION_ID) {
+    function allowSelector(bytes4 _selector) public virtual auth(MANAGE_SELECTORS_PERMISSION_ID) {
         if (allowedSelectors[_selector]) revert AlreadyAllowed(_selector);
         allowedSelectors[_selector] = true;
 
@@ -46,9 +40,7 @@ contract SelectorCondition is ERC165, IPermissionCondition, DaoAuthorizable {
 
     /// @notice Marks the given selector as disallowed
     /// @param _selector The function selector to stop allowing
-    function disallowSelector(
-        bytes4 _selector
-    ) public virtual auth(MANAGE_SELECTORS_PERMISSION_ID) {
+    function disallowSelector(bytes4 _selector) public virtual auth(MANAGE_SELECTORS_PERMISSION_ID) {
         if (!allowedSelectors[_selector]) revert AlreadyDisallowed(_selector);
         allowedSelectors[_selector] = false;
 
@@ -56,12 +48,12 @@ contract SelectorCondition is ERC165, IPermissionCondition, DaoAuthorizable {
     }
 
     /// @inheritdoc IPermissionCondition
-    function isGranted(
-        address _where,
-        address _who,
-        bytes32 _permissionId,
-        bytes calldata _data
-    ) public view virtual returns (bool isPermitted) {
+    function isGranted(address _where, address _who, bytes32 _permissionId, bytes calldata _data)
+        public
+        view
+        virtual
+        returns (bool isPermitted)
+    {
         (_where, _who, _permissionId);
 
         return allowedSelectors[getSelector(_data)];
@@ -70,11 +62,7 @@ contract SelectorCondition is ERC165, IPermissionCondition, DaoAuthorizable {
     /// @notice Checks if an interface is supported by this or its parent contract.
     /// @param _interfaceId The ID of the interface.
     /// @return Returns `true` if the interface is supported.
-    function supportsInterface(
-        bytes4 _interfaceId
-    ) public view virtual override returns (bool) {
-        return
-            _interfaceId == type(IPermissionCondition).interfaceId ||
-            super.supportsInterface(_interfaceId);
+    function supportsInterface(bytes4 _interfaceId) public view virtual override returns (bool) {
+        return _interfaceId == type(IPermissionCondition).interfaceId || super.supportsInterface(_interfaceId);
     }
 }

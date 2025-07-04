@@ -22,7 +22,7 @@ contract ExecuteSelectorCondition is
         /// @notice The address where the selectors below can be invoked
         address where;
         /// @notice The list of function selectors that can be invoked within an execute() call.
-        /// @notice Plain eth transfers should contain 0 as a selector.
+        /// @notice Plain eth transfers should contain 0 as the selector.
         bytes4[] selectors;
     }
 
@@ -38,14 +38,6 @@ contract ExecuteSelectorCondition is
 
     /// @notice Thrown when alowing an empty selector. Ether transfers and fallback functions are out the scope of this condition.
     error EmptySelector();
-    /// @notice Thrown when attempting to allow an already allowed selector.
-    error SelectorAlreadyAllowed(bytes4 selector, address where);
-    /// @notice Thrown when attempting to disallow an already disallowed selector.
-    error SelectorAlreadyDisallowed(bytes4 selector, address where);
-    /// @notice Thrown when attempting to allow eth transfers to an already allowed target.
-    error EthTransfersAlreadyAllowed(address where);
-    /// @notice Thrown when attempting to disallow eth transfers to  an already disallowed target.
-    error EthTransfersAlreadyDisallowed(address where);
 
     /// @notice Emitted when a new selector is allowed.
     event SelectorAllowed(bytes4 selector, address where);
@@ -89,6 +81,8 @@ contract ExecuteSelectorCondition is
     function allowEthTransfers(
         address _where
     ) public virtual auth(MANAGE_SELECTORS_PERMISSION_ID) {
+        if (allowedEthTransfers[_where]) return;
+
         _allowEthTransfers(_where);
     }
 
@@ -97,6 +91,8 @@ contract ExecuteSelectorCondition is
     function disallowEthTransfers(
         address _where
     ) public virtual auth(MANAGE_SELECTORS_PERMISSION_ID) {
+        if (!allowedEthTransfers[_where]) return;
+
         _disallowEthTransfers(_where);
     }
 
@@ -122,7 +118,7 @@ contract ExecuteSelectorCondition is
         for (uint256 i; i < _actions.length; i++) {
             if (_actions[i].data.length == 0) {
                 if (_actions[i].value == 0) return false;
-                return allowedEthTransfers[_actions[i].to];
+                else if(!allowedEthTransfers[_actions[i].to]) return false;
             } else if (_actions[i].data.length < 4) {
                 return false;
             } else if (
@@ -154,7 +150,8 @@ contract ExecuteSelectorCondition is
     function _allowSelectors(SelectorTarget memory _newEntry) internal virtual {
         for (uint256 i; i < _newEntry.selectors.length; i++) {
             if (allowedSelectors[_newEntry.where][_newEntry.selectors[i]]) {
-                revert SelectorAlreadyAllowed(_newEntry.selectors[i], _newEntry.where);
+                // The requested state is already in place
+                continue;
             }
             allowedSelectors[_newEntry.where][_newEntry.selectors[i]] = true;
             emit SelectorAllowed(_newEntry.selectors[i], _newEntry.where);
@@ -164,7 +161,8 @@ contract ExecuteSelectorCondition is
     function _disallowSelectors(SelectorTarget memory _entry) internal virtual {
         for (uint256 i; i < _entry.selectors.length; i++) {
             if (!allowedSelectors[_entry.where][_entry.selectors[i]]) {
-                revert SelectorAlreadyDisallowed(_entry.selectors[i], _entry.where);
+                // The requested state is already in place
+                continue;
             }
             allowedSelectors[_entry.where][_entry.selectors[i]] = false;
             emit SelectorDisallowed(_entry.selectors[i], _entry.where);
@@ -172,12 +170,12 @@ contract ExecuteSelectorCondition is
     }
 
     function _allowEthTransfers(address _where) internal virtual {
-        if (allowedEthTransfers[_where]) revert EthTransfersAlreadyDisallowed(_where);
+        allowedEthTransfers[_where] = true;
         emit EthTransfersAllowed(_where);
     }
 
     function _disallowEthTransfers(address _where) internal virtual {
-        if (!allowedEthTransfers[_where]) revert EthTransfersAlreadyDisallowed(_where);
+        allowedEthTransfers[_where] = false;
         emit EthTransfersDisallowed(_where);
     }
 }

@@ -6,6 +6,7 @@ import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
 import {ExecuteSelectorCondition} from "../src/ExecuteSelectorCondition.sol";
 import {SelectorCondition} from "../src/SelectorCondition.sol";
 
+/// @dev This is a development script used for internal testing purposes
 contract Create is Script {
     IDAO constant dao =
         IDAO(address(0xce4d73496f0Cf54399b56545292cd8C362Cb866E));

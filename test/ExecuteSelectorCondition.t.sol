@@ -5,6 +5,7 @@ import {AragonTest} from "./base/AragonTest.sol";
 import {DaoBuilder} from "./helpers/DaoBuilder.sol";
 import {DAO} from "@aragon/osx/core/dao/DAO.sol";
 import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
+import {IExecutor} from "@aragon/osx-commons-contracts/src/executors/IExecutor.sol";
 import {Action} from "@aragon/osx-commons-contracts/src/executors/IExecutor.sol";
 import {PermissionManager} from "@aragon/osx/core/permission/PermissionManager.sol";
 import {DaoUnauthorized} from "@aragon/osx-commons-contracts/src/permission/auth/auth.sol";
@@ -12,7 +13,14 @@ import {IPermissionCondition} from "@aragon/osx-commons-contracts/src/permission
 import {IERC165Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/introspection/IERC165Upgradeable.sol";
 import {ExecuteSelectorCondition} from "../src/ExecuteSelectorCondition.sol";
 import {ConditionFactory} from "../src/factory/ConditionFactory.sol";
-import {EXECUTE_PERMISSION_ID, SET_METADATA_PERMISSION_ID, SET_SIGNATURE_VALIDATOR_PERMISSION_ID, REGISTER_STANDARD_CALLBACK_PERMISSION_ID, SET_TRUSTED_FORWARDER_PERMISSION_ID, MANAGE_SELECTORS_PERMISSION_ID} from "./constants.sol";
+import {
+    EXECUTE_PERMISSION_ID,
+    SET_METADATA_PERMISSION_ID,
+    SET_SIGNATURE_VALIDATOR_PERMISSION_ID,
+    REGISTER_STANDARD_CALLBACK_PERMISSION_ID,
+    SET_TRUSTED_FORWARDER_PERMISSION_ID,
+    MANAGE_SELECTORS_PERMISSION_ID
+} from "./constants.sol";
 
 contract ExecuteSelectorConditionTest is AragonTest {
     DaoBuilder builder;
@@ -20,808 +28,353 @@ contract ExecuteSelectorConditionTest is AragonTest {
     ConditionFactory factory;
     ExecuteSelectorCondition executeSelectorCondition;
 
-    event SelectorAllowed(bytes4 selector, address target);
-    event SelectorDisallowed(bytes4 selector, address target);
+    // Events
+    event SelectorAllowed(bytes4 selector, address where);
+    event SelectorDisallowed(bytes4 selector, address where);
+    event EthTransfersAllowed(address where);
+    event EthTransfersDisallowed(address where);
+
+    bytes4 internal constant DUMMY_SELECTOR_1 = 0x11111111;
+    bytes4 internal constant DUMMY_SELECTOR_2 = 0x22222222;
 
     function setUp() public {
         vm.startPrank(alice);
         builder = new DaoBuilder();
-        (dao, factory, executeSelectorCondition, ) = builder.build();
+        (dao, factory, executeSelectorCondition,) = builder.build();
     }
 
     function test_WhenDeployingTheContract() external {
-        // It should set the given DAO
-        // It should define the given selectors as allowed
+        // It should set the given DAO address
+        assertEq(address(executeSelectorCondition.dao()), address(dao));
 
-        vm.assertEq(address(executeSelectorCondition.dao()), address(dao));
-        assertFalse(
-            executeSelectorCondition.allowedSelectors(address(dao), bytes4(0))
-        );
-        assertFalse(
-            executeSelectorCondition.allowedSelectors(
-                address(dao),
-                bytes4(0x11223344)
-            )
-        );
-        assertFalse(
-            executeSelectorCondition.allowedSelectors(
-                address(dao),
-                bytes4(0x55667788)
-            )
-        );
-        assertFalse(
-            executeSelectorCondition.allowedSelectors(
-                address(dao),
-                bytes4(0xffffffff)
-            )
-        );
+        // It should succeed with an empty _initialEntries array
+        ExecuteSelectorCondition.SelectorTarget[] memory emptyEntries;
+        ExecuteSelectorCondition conditionWithEmpty = new ExecuteSelectorCondition(dao, emptyEntries);
+        assertEq(address(conditionWithEmpty.dao()), address(dao));
 
-        // 1
-        ExecuteSelectorCondition.SelectorTarget[]
-            memory _initialEntries = new ExecuteSelectorCondition.SelectorTarget[](
-                2
-            );
-        _initialEntries[0].selectors = new bytes4[](2);
-        _initialEntries[0].selectors[0] = bytes4(0x11223344);
-        _initialEntries[0].selectors[1] = bytes4(0x55667788);
-        _initialEntries[0].where = address(dao);
-        _initialEntries[1].selectors = new bytes4[](1);
-        _initialEntries[1].selectors[0] = bytes4(0x99aabbcc);
-        _initialEntries[1].where = address(this);
-        executeSelectorCondition = new ExecuteSelectorCondition(
-            dao,
-            _initialEntries
-        );
+        // It should correctly initialize allowed selectors from _initialEntries
+        ExecuteSelectorCondition.SelectorTarget[] memory initialEntries =
+            new ExecuteSelectorCondition.SelectorTarget[](2);
+        initialEntries[0].where = address(dao);
+        initialEntries[0].selectors = new bytes4[](2);
+        initialEntries[0].selectors[0] = DUMMY_SELECTOR_1;
+        initialEntries[0].selectors[1] = DUMMY_SELECTOR_2;
 
-        assertFalse(
-            executeSelectorCondition.allowedSelectors(address(dao), bytes4(0))
-        );
-        vm.assertTrue(
-            executeSelectorCondition.allowedSelectors(
-                address(dao),
-                bytes4(0x11223344)
-            )
-        );
-        vm.assertTrue(
-            executeSelectorCondition.allowedSelectors(
-                address(dao),
-                bytes4(0x55667788)
-            )
-        );
-        vm.assertTrue(
-            executeSelectorCondition.allowedSelectors(
-                address(this),
-                bytes4(0x99aabbcc)
-            )
-        );
-        assertFalse(
-            executeSelectorCondition.allowedSelectors(
-                address(dao),
-                bytes4(0xffffffff)
-            )
-        );
+        initialEntries[1].where = address(this);
+        initialEntries[1].selectors = new bytes4[](1);
+        initialEntries[1].selectors[0] = DUMMY_SELECTOR_1;
 
-        // 2
-        _initialEntries = new ExecuteSelectorCondition.SelectorTarget[](2);
-        _initialEntries[0].selectors = new bytes4[](2);
-        _initialEntries[0].selectors[0] = bytes4(0x00008888);
-        _initialEntries[0].selectors[1] = bytes4(0x2222aaaa);
-        _initialEntries[0].where = carol;
-        _initialEntries[1].selectors = new bytes4[](1);
-        _initialEntries[1].selectors[0] = bytes4(0x446688aa);
-        _initialEntries[1].where = david;
-        executeSelectorCondition = new ExecuteSelectorCondition(
-            dao,
-            _initialEntries
-        );
+        ExecuteSelectorCondition condition = new ExecuteSelectorCondition(dao, initialEntries);
+        assertTrue(condition.allowedSelectors(address(dao), DUMMY_SELECTOR_1));
+        assertTrue(condition.allowedSelectors(address(dao), DUMMY_SELECTOR_2));
+        assertTrue(condition.allowedSelectors(address(this), DUMMY_SELECTOR_1));
+        assertFalse(condition.allowedSelectors(address(this), DUMMY_SELECTOR_2));
+        assertFalse(condition.allowedSelectors(carol, DUMMY_SELECTOR_1));
 
-        assertFalse(
-            executeSelectorCondition.allowedSelectors(carol, bytes4(0))
-        );
-        vm.assertTrue(
-            executeSelectorCondition.allowedSelectors(carol, bytes4(0x00008888))
-        );
-        vm.assertTrue(
-            executeSelectorCondition.allowedSelectors(carol, bytes4(0x2222aaaa))
-        );
-        vm.assertTrue(
-            executeSelectorCondition.allowedSelectors(david, bytes4(0x446688aa))
-        );
-        assertFalse(
-            executeSelectorCondition.allowedSelectors(david, bytes4(0xffffffff))
-        );
-    }
+        // It should succeed if _initialEntries contains duplicate selectors, ignoring the duplicates
+        initialEntries = new ExecuteSelectorCondition.SelectorTarget[](1);
+        initialEntries[0].where = address(dao);
+        initialEntries[0].selectors = new bytes4[](3);
+        initialEntries[0].selectors[0] = DUMMY_SELECTOR_1;
+        initialEntries[0].selectors[1] = DUMMY_SELECTOR_2;
+        initialEntries[0].selectors[2] = DUMMY_SELECTOR_1; // Duplicate
 
-    function test_RevertWhen_NotCallingExecute() external {
-        // It should revert
+        condition = new ExecuteSelectorCondition(dao, initialEntries);
+        assertTrue(condition.allowedSelectors(address(dao), DUMMY_SELECTOR_1));
+        assertTrue(condition.allowedSelectors(address(dao), DUMMY_SELECTOR_2));
 
-        ExecuteSelectorCondition.SelectorTarget[]
-            memory _initialEntries = new ExecuteSelectorCondition.SelectorTarget[](
-                0
-            );
-        executeSelectorCondition = ExecuteSelectorCondition(
-            factory.deployExecuteSelectorCondition(dao, _initialEntries)
-        );
+        // It should succeed when _initialEntries contains an entry with an empty selectors array
+        initialEntries = new ExecuteSelectorCondition.SelectorTarget[](1);
+        initialEntries[0].where = address(dao);
+        initialEntries[0].selectors = new bytes4[](0); // Empty selectors array
 
-        // Granting permission to call something other than execute()
-        dao.grantWithCondition(
-            address(dao),
-            bob,
-            SET_METADATA_PERMISSION_ID,
-            executeSelectorCondition
-        );
-
-        // not execute()
-        vm.expectRevert();
-        vm.startPrank(bob);
-        dao.setMetadata("new-value");
-
-        // Granting execute (no selectors)
-        vm.startPrank(alice);
-        dao.grantWithCondition(
-            address(dao),
-            bob,
-            EXECUTE_PERMISSION_ID,
-            executeSelectorCondition
-        );
-
-        // Now calling execute (no actions)
-        vm.startPrank(bob);
-        Action[] memory _actions = new Action[](0);
-        dao.execute(bytes32(0), _actions, 0);
-    }
-
-    modifier whenCallingExecute() {
-        _;
-    }
-
-    function test_RevertGiven_NotAllActionsAreAllowed()
-        external
-        whenCallingExecute
-    {
-        // It should revert
-
-        // Allow the DAO to call its own functions
-        dao.grant(address(dao), address(dao), SET_METADATA_PERMISSION_ID);
-        dao.grant(
-            address(dao),
-            address(dao),
-            SET_SIGNATURE_VALIDATOR_PERMISSION_ID
-        );
-        dao.grant(
-            address(dao),
-            address(dao),
-            REGISTER_STANDARD_CALLBACK_PERMISSION_ID
-        );
-        dao.grant(
-            address(dao),
-            address(dao),
-            SET_TRUSTED_FORWARDER_PERMISSION_ID
-        );
-
-        // No targets allowed yet
-
-        ExecuteSelectorCondition.SelectorTarget[]
-            memory _entries = new ExecuteSelectorCondition.SelectorTarget[](0);
-        executeSelectorCondition = ExecuteSelectorCondition(
-            factory.deployExecuteSelectorCondition(dao, _entries)
-        );
-
-        Action[] memory _actions = new Action[](0);
-
-        // Can execute, but no selectors are allowed
-        dao.grantWithCondition(
-            address(dao),
-            bob,
-            EXECUTE_PERMISSION_ID,
-            executeSelectorCondition
-        );
-
-        // 1 nop
-        vm.startPrank(bob);
-        dao.execute(bytes32(0), _actions, 0);
-
-        // 2 all out
-        _actions = new Action[](3);
-        _actions[0].data = abi.encodeCall(DAO.setMetadata, ("hi"));
-        _actions[0].to = address(dao);
-        _actions[1].data = abi.encodeCall(
-            DAO.registerStandardCallback,
-            (bytes4(uint32(1)), bytes4(uint32(2)), bytes4(uint32(3)))
-        );
-        _actions[1].to = address(dao);
-        _actions[2].data = abi.encodeCall(DAO.setTrustedForwarder, (carol));
-        _actions[2].to = address(dao);
-
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                PermissionManager.Unauthorized.selector,
-                address(dao),
-                address(bob),
-                EXECUTE_PERMISSION_ID
-            )
-        );
-        dao.execute(bytes32(uint256(1)), _actions, 0);
-
-        // 3 some out
-        {
-            vm.startPrank(alice);
-            dao.revoke(address(dao), bob, EXECUTE_PERMISSION_ID);
-
-            _entries = new ExecuteSelectorCondition.SelectorTarget[](1);
-            _entries[0].selectors = new bytes4[](1);
-            _entries[0].selectors[0] = DAO.setMetadata.selector;
-            _entries[0].where = address(dao);
-
-            executeSelectorCondition = ExecuteSelectorCondition(
-                factory.deployExecuteSelectorCondition(dao, _entries)
-            );
-            dao.grantWithCondition(
-                address(dao),
-                bob,
-                EXECUTE_PERMISSION_ID,
-                executeSelectorCondition
-            );
-
-            vm.startPrank(bob);
-        }
-
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                PermissionManager.Unauthorized.selector,
-                address(dao),
-                address(bob),
-                EXECUTE_PERMISSION_ID
-            )
-        );
-        dao.execute(bytes32(uint256(2)), _actions, 0);
-
-        // 4 some still out
-        {
-            vm.startPrank(alice);
-            dao.revoke(address(dao), bob, EXECUTE_PERMISSION_ID);
-
-            _entries = new ExecuteSelectorCondition.SelectorTarget[](2);
-            _entries[0].selectors = new bytes4[](2);
-            _entries[0].selectors[0] = DAO.setMetadata.selector;
-            _entries[0].selectors[1] = DAO.registerStandardCallback.selector;
-            _entries[0].where = address(dao);
-
-            executeSelectorCondition = ExecuteSelectorCondition(
-                factory.deployExecuteSelectorCondition(dao, _entries)
-            );
-            dao.grantWithCondition(
-                address(dao),
-                bob,
-                EXECUTE_PERMISSION_ID,
-                executeSelectorCondition
-            );
-
-            vm.startPrank(bob);
-        }
-
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                PermissionManager.Unauthorized.selector,
-                address(dao),
-                address(bob),
-                EXECUTE_PERMISSION_ID
-            )
-        );
-        dao.execute(bytes32(uint256(2)), _actions, 0);
-    }
-
-    function test_RevertGiven_NotAllTargetsAreAllowed()
-        external
-        whenCallingExecute
-    {
-        // It should revert
-
-        // Allow the DAO to call its own functions
-        dao.grant(address(dao), address(dao), SET_METADATA_PERMISSION_ID);
-        dao.grant(
-            address(dao),
-            address(dao),
-            SET_SIGNATURE_VALIDATOR_PERMISSION_ID
-        );
-        dao.grant(
-            address(dao),
-            address(dao),
-            REGISTER_STANDARD_CALLBACK_PERMISSION_ID
-        );
-        dao.grant(
-            address(dao),
-            address(dao),
-            SET_TRUSTED_FORWARDER_PERMISSION_ID
-        );
-
-        ExecuteSelectorCondition.SelectorTarget[]
-            memory _entries = new ExecuteSelectorCondition.SelectorTarget[](0);
-
-        // All selectors target another address
-
-        _entries = new ExecuteSelectorCondition.SelectorTarget[](1);
-        _entries[0].selectors = new bytes4[](3);
-        _entries[0].selectors[0] = DAO.setMetadata.selector;
-        _entries[0].selectors[1] = DAO.registerStandardCallback.selector;
-        _entries[0].selectors[2] = DAO.setTrustedForwarder.selector;
-        _entries[0].where = carol;
-        executeSelectorCondition = ExecuteSelectorCondition(
-            factory.deployExecuteSelectorCondition(dao, _entries)
-        );
-
-        Action[] memory _actions = new Action[](0);
-
-        // Can execute, but no selectors are allowed
-        dao.grantWithCondition(
-            address(dao),
-            bob,
-            EXECUTE_PERMISSION_ID,
-            executeSelectorCondition
-        );
-
-        // 1 no actions, ok
-        vm.startPrank(bob);
-        dao.execute(bytes32(0), _actions, 0);
-
-        // 2 all on a different target
-        _actions = new Action[](4);
-        _actions[0].data = abi.encodeCall(DAO.setMetadata, ("hi"));
-        _actions[0].to = address(dao);
-        _actions[1].data = abi.encodeCall(
-            DAO.registerStandardCallback,
-            (bytes4(uint32(1)), bytes4(uint32(2)), bytes4(uint32(3)))
-        );
-        _actions[1].to = address(dao);
-        _actions[2].data = abi.encodeCall(DAO.setTrustedForwarder, (carol));
-        _actions[2].to = address(dao);
-
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                PermissionManager.Unauthorized.selector,
-                address(dao),
-                address(bob),
-                EXECUTE_PERMISSION_ID
-            )
-        );
-        dao.execute(bytes32(uint256(1)), _actions, 0);
-
-        // 3 some out
-        {
-            vm.startPrank(alice);
-            dao.revoke(address(dao), bob, EXECUTE_PERMISSION_ID);
-
-            _entries = new ExecuteSelectorCondition.SelectorTarget[](2);
-            _entries[0].selectors = new bytes4[](1);
-            _entries[0].selectors[0] = DAO.setMetadata.selector;
-            _entries[0].where = address(dao);
-            _entries[1].selectors = new bytes4[](2);
-            _entries[1].selectors[0] = DAO.registerStandardCallback.selector;
-            _entries[1].selectors[1] = DAO.setTrustedForwarder.selector;
-            _entries[1].where = carol;
-
-            executeSelectorCondition = ExecuteSelectorCondition(
-                factory.deployExecuteSelectorCondition(dao, _entries)
-            );
-            dao.grantWithCondition(
-                address(dao),
-                bob,
-                EXECUTE_PERMISSION_ID,
-                executeSelectorCondition
-            );
-
-            vm.startPrank(bob);
-        }
-
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                PermissionManager.Unauthorized.selector,
-                address(dao),
-                address(bob),
-                EXECUTE_PERMISSION_ID
-            )
-        );
-        dao.execute(bytes32(uint256(2)), _actions, 0);
-
-        // 4 still one left
-        {
-            vm.startPrank(alice);
-            dao.revoke(address(dao), bob, EXECUTE_PERMISSION_ID);
-
-            _entries = new ExecuteSelectorCondition.SelectorTarget[](2);
-            _entries[0].selectors = new bytes4[](2);
-            _entries[0].selectors[0] = DAO.setMetadata.selector;
-            _entries[0].selectors[1] = DAO.registerStandardCallback.selector;
-            _entries[0].where = address(dao);
-            _entries[1].selectors = new bytes4[](1);
-            _entries[1].selectors[0] = DAO.setTrustedForwarder.selector;
-            _entries[1].where = carol;
-
-            executeSelectorCondition = ExecuteSelectorCondition(
-                factory.deployExecuteSelectorCondition(dao, _entries)
-            );
-            dao.grantWithCondition(
-                address(dao),
-                bob,
-                EXECUTE_PERMISSION_ID,
-                executeSelectorCondition
-            );
-
-            vm.startPrank(bob);
-        }
-
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                PermissionManager.Unauthorized.selector,
-                address(dao),
-                address(bob),
-                EXECUTE_PERMISSION_ID
-            )
-        );
-        dao.execute(bytes32(uint256(2)), _actions, 0);
-    }
-
-    function test_GivenAllActionsAreAllowed() external whenCallingExecute {
-        // It should allow execution
-
-        // Allow the DAO to call its own functions
-        dao.grant(address(dao), address(dao), SET_METADATA_PERMISSION_ID);
-        dao.grant(
-            address(dao),
-            address(dao),
-            SET_SIGNATURE_VALIDATOR_PERMISSION_ID
-        );
-        dao.grant(
-            address(dao),
-            address(dao),
-            REGISTER_STANDARD_CALLBACK_PERMISSION_ID
-        );
-        dao.grant(
-            address(dao),
-            address(dao),
-            SET_TRUSTED_FORWARDER_PERMISSION_ID
-        );
-
-        // All allowed selectors
-        ExecuteSelectorCondition.SelectorTarget[]
-            memory _entries = new ExecuteSelectorCondition.SelectorTarget[](1);
-        _entries[0].selectors = new bytes4[](3);
-        _entries[0].selectors[0] = DAO.setMetadata.selector;
-        _entries[0].selectors[1] = DAO.registerStandardCallback.selector;
-        _entries[0].selectors[2] = DAO.setTrustedForwarder.selector;
-        _entries[0].where = address(dao);
-
-        executeSelectorCondition = ExecuteSelectorCondition(
-            factory.deployExecuteSelectorCondition(dao, _entries)
-        );
-
-        dao.grantWithCondition(
-            address(dao),
-            bob,
-            EXECUTE_PERMISSION_ID,
-            executeSelectorCondition
-        );
-
-        // Bob can now execute these actions
-        vm.startPrank(bob);
-
-        Action[] memory _actions = new Action[](3);
-        _actions[0].data = abi.encodeCall(DAO.setMetadata, ("hi"));
-        _actions[0].to = address(dao);
-        _actions[1].data = abi.encodeCall(
-            DAO.registerStandardCallback,
-            (bytes4(uint32(1)), bytes4(uint32(2)), bytes4(uint32(3)))
-        );
-        _actions[1].to = address(dao);
-        _actions[2].data = abi.encodeCall(DAO.setTrustedForwarder, (carol));
-        _actions[2].to = address(dao);
-
-        dao.execute(bytes32(uint256(2)), _actions, 0);
+        condition = new ExecuteSelectorCondition(dao, initialEntries);
+        assertFalse(condition.allowedSelectors(address(dao), DUMMY_SELECTOR_1));
     }
 
     modifier whenCallingIsGranted() {
         _;
     }
 
-    function test_GivenNotAllActionsAreAllowed2()
+    function test_GivenTheCalldataIsNotForIExecutorexecute() external view whenCallingIsGranted {
+        // It should return false
+        bytes memory calldataNotExecute = abi.encodeCall(DAO.setMetadata, ("metadata"));
+        bool isPermitted = executeSelectorCondition.isGranted(address(0), address(0), bytes32(0), calldataNotExecute);
+        assertFalse(isPermitted);
+    }
+
+    modifier givenTheCalldataIsForIExecutorexecute() {
+        _;
+    }
+
+    function test_GivenTheActionsArrayIsEmpty()
         external
+        view
         whenCallingIsGranted
+        givenTheCalldataIsForIExecutorexecute
+    {
+        // It should return true
+        Action[] memory emptyActions;
+        bytes memory calldataWithEmptyActions = abi.encodeCall(IExecutor.execute, (bytes32(0), emptyActions, 0));
+        bool isPermitted =
+            executeSelectorCondition.isGranted(address(0), address(0), bytes32(0), calldataWithEmptyActions);
+        assertTrue(isPermitted);
+    }
+
+    function test_GivenAnActionHasCalldataLengthBetween1And3Bytes()
+        external
+        view
+        whenCallingIsGranted
+        givenTheCalldataIsForIExecutorexecute
     {
         // It should return false
+        Action[] memory actions = new Action[](1);
+        bytes memory calldataPayload;
 
-        // No selectors allowed yet
-        ExecuteSelectorCondition.SelectorTarget[]
-            memory _entries = new ExecuteSelectorCondition.SelectorTarget[](0);
-        executeSelectorCondition = ExecuteSelectorCondition(
-            factory.deployExecuteSelectorCondition(dao, _entries)
-        );
+        // Length 1
+        actions[0].data = hex"aa";
+        calldataPayload = abi.encodeCall(IExecutor.execute, (bytes32(0), actions, 0));
+        assertFalse(executeSelectorCondition.isGranted(address(0), address(0), bytes32(0), calldataPayload));
 
-        Action[] memory _actions = new Action[](0);
+        // Length 2
+        actions[0].data = hex"aabb";
+        calldataPayload = abi.encodeCall(IExecutor.execute, (bytes32(0), actions, 0));
+        assertFalse(executeSelectorCondition.isGranted(address(0), address(0), bytes32(0), calldataPayload));
 
-        // 1 no actions
-        bytes memory _calldata = abi.encodeCall(
-            DAO.execute,
-            (bytes32(uint256(1)), _actions, 0)
-        );
-        vm.assertTrue(
-            executeSelectorCondition.isGranted(
-                address(0),
-                address(0),
-                bytes32(0),
-                _calldata
-            )
-        );
-
-        // 2 all out
-        _actions = new Action[](4);
-        _actions[0].data = abi.encodeCall(DAO.setMetadata, ("hi"));
-        _actions[0].to = address(dao);
-        _actions[1].data = abi.encodeCall(
-            DAO.registerStandardCallback,
-            (bytes4(uint32(1)), bytes4(uint32(2)), bytes4(uint32(3)))
-        );
-        _actions[1].to = address(dao);
-        _actions[2].data = abi.encodeCall(DAO.setTrustedForwarder, (carol));
-        _actions[2].to = address(dao);
-
-        _calldata = abi.encodeCall(
-            DAO.execute,
-            (bytes32(uint256(1)), _actions, 0)
-        );
-        assertFalse(
-            executeSelectorCondition.isGranted(
-                address(0),
-                address(0),
-                bytes32(0),
-                _calldata
-            )
-        );
-
-        // 3 some out
-        _entries = new ExecuteSelectorCondition.SelectorTarget[](1);
-        _entries[0].selectors = new bytes4[](1);
-        _entries[0].selectors[0] = DAO.setMetadata.selector;
-        _entries[0].where = address(dao);
-
-        executeSelectorCondition = ExecuteSelectorCondition(
-            factory.deployExecuteSelectorCondition(dao, _entries)
-        );
-
-        _calldata = abi.encodeCall(
-            DAO.execute,
-            (bytes32(uint256(1)), _actions, 0)
-        );
-        assertFalse(
-            executeSelectorCondition.isGranted(
-                address(0),
-                address(0),
-                bytes32(0),
-                _calldata
-            )
-        );
-
-        // 4 some still out
-        _entries = new ExecuteSelectorCondition.SelectorTarget[](1);
-        _entries[0].selectors = new bytes4[](2);
-        _entries[0].selectors[0] = DAO.setMetadata.selector;
-        _entries[0].selectors[1] = DAO.registerStandardCallback.selector;
-        _entries[0].where = address(dao);
-
-        executeSelectorCondition = ExecuteSelectorCondition(
-            factory.deployExecuteSelectorCondition(dao, _entries)
-        );
-
-        _calldata = abi.encodeCall(
-            DAO.execute,
-            (bytes32(uint256(1)), _actions, 0)
-        );
-        assertFalse(
-            executeSelectorCondition.isGranted(
-                address(0),
-                address(0),
-                bytes32(0),
-                _calldata
-            )
-        );
+        // Length 3
+        actions[0].data = hex"aabbcc";
+        calldataPayload = abi.encodeCall(IExecutor.execute, (bytes32(0), actions, 0));
+        assertFalse(executeSelectorCondition.isGranted(address(0), address(0), bytes32(0), calldataPayload));
     }
 
-    function test_GivenNotAllTargetsAreAllowed2()
+    modifier givenASingleActionIsAFunctionCallValue0() {
+        _;
+    }
+
+    function test_GivenTheSelectorIsAllowedForTheTarget()
         external
         whenCallingIsGranted
+        givenTheCalldataIsForIExecutorexecute
+        givenASingleActionIsAFunctionCallValue0
     {
-        // It returns false
-
-        // All allowed selectors
-        ExecuteSelectorCondition.SelectorTarget[]
-            memory _entries = new ExecuteSelectorCondition.SelectorTarget[](1);
-        _entries[0].selectors = new bytes4[](3);
-        _entries[0].selectors[0] = DAO.setMetadata.selector;
-        _entries[0].selectors[1] = DAO.registerStandardCallback.selector;
-        _entries[0].selectors[2] = DAO.setTrustedForwarder.selector;
-        _entries[0].where = address(dao);
-
-        executeSelectorCondition = ExecuteSelectorCondition(
-            factory.deployExecuteSelectorCondition(dao, _entries)
-        );
-
-        // 1 no actions
-        Action[] memory _actions = new Action[](0);
-        bytes memory _calldata = abi.encodeCall(
-            DAO.execute,
-            (bytes32(uint256(1)), _actions, 0)
-        );
-        vm.assertTrue(
-            executeSelectorCondition.isGranted(
-                address(0),
-                address(0),
-                bytes32(0),
-                _calldata
-            )
-        );
-
-        // 2 all targets off
-        _actions = new Action[](3);
-        _actions[0].data = abi.encodeCall(DAO.setMetadata, ("hi"));
-        _actions[0].to = carol;
-        _actions[1].data = abi.encodeCall(
-            DAO.registerStandardCallback,
-            (bytes4(uint32(1)), bytes4(uint32(2)), bytes4(uint32(3)))
-        );
-        _actions[1].to = carol;
-        _actions[2].data = abi.encodeCall(DAO.setTrustedForwarder, (carol));
-        _actions[2].to = carol;
-
-        _calldata = abi.encodeCall(
-            DAO.execute,
-            (bytes32(uint256(1)), _actions, 0)
-        );
-        assertFalse(
-            executeSelectorCondition.isGranted(
-                address(0),
-                address(0),
-                bytes32(0),
-                _calldata
-            )
-        );
-
-        // 3 some out
-        _calldata = abi.encodeCall(
-            DAO.execute,
-            (bytes32(uint256(1)), _actions, 0)
-        );
-        assertFalse(
-            executeSelectorCondition.isGranted(
-                address(0),
-                address(0),
-                bytes32(0),
-                _calldata
-            )
-        );
-
-        // 4 still 2 left
-        _actions[0].to = address(dao);
-        _actions[1].to = carol;
-        _actions[2].to = carol;
-
-        _calldata = abi.encodeCall(
-            DAO.execute,
-            (bytes32(uint256(1)), _actions, 0)
-        );
-        assertFalse(
-            executeSelectorCondition.isGranted(
-                address(0),
-                address(0),
-                bytes32(0),
-                _calldata
-            )
-        );
-
-        // 5 still 1 left
-        _actions[0].to = address(dao);
-        _actions[1].to = address(dao);
-        _actions[2].to = carol;
-
-        _calldata = abi.encodeCall(
-            DAO.execute,
-            (bytes32(uint256(1)), _actions, 0)
-        );
-        assertFalse(
-            executeSelectorCondition.isGranted(
-                address(0),
-                address(0),
-                bytes32(0),
-                _calldata
-            )
-        );
-    }
-
-    function test_GivenAllActionsAreAllowed2() external whenCallingIsGranted {
         // It should return true
+        dao.grant(address(executeSelectorCondition), alice, MANAGE_SELECTORS_PERMISSION_ID);
+        ExecuteSelectorCondition.SelectorTarget memory entry;
+        entry.where = address(dao);
+        entry.selectors = new bytes4[](1);
+        entry.selectors[0] = DAO.setMetadata.selector;
+        executeSelectorCondition.allowSelectors(entry);
 
-        // All allowed selectors
-        ExecuteSelectorCondition.SelectorTarget[]
-            memory _entries = new ExecuteSelectorCondition.SelectorTarget[](1);
-        _entries[0].selectors = new bytes4[](3);
-        _entries[0].selectors[0] = DAO.setMetadata.selector;
-        _entries[0].selectors[1] = DAO.registerStandardCallback.selector;
-        _entries[0].selectors[2] = DAO.setTrustedForwarder.selector;
-        _entries[0].where = address(dao);
+        Action[] memory actions = new Action[](1);
+        actions[0].to = address(dao);
+        actions[0].value = 0;
+        actions[0].data = abi.encodeCall(DAO.setMetadata, ("new metadata"));
 
-        executeSelectorCondition = ExecuteSelectorCondition(
-            factory.deployExecuteSelectorCondition(dao, _entries)
-        );
-
-        // 1 no actions
-        Action[] memory _actions = new Action[](0);
-        bytes memory _calldata = abi.encodeCall(
-            DAO.execute,
-            (bytes32(uint256(1)), _actions, 0)
-        );
-        vm.assertTrue(
-            executeSelectorCondition.isGranted(
-                address(0),
-                address(0),
-                bytes32(0),
-                _calldata
-            )
-        );
-
-        // 2 all targets match
-        _actions = new Action[](3);
-        _actions[0].data = abi.encodeCall(DAO.setMetadata, ("hi"));
-        _actions[0].to = address(dao);
-        _actions[1].data = abi.encodeCall(
-            DAO.registerStandardCallback,
-            (bytes4(uint32(1)), bytes4(uint32(2)), bytes4(uint32(3)))
-        );
-        _actions[1].to = address(dao);
-        _actions[2].data = abi.encodeCall(
-            DAO.setTrustedForwarder,
-            (address(dao))
-        );
-        _actions[2].to = address(dao);
-
-        _calldata = abi.encodeCall(
-            DAO.execute,
-            (bytes32(uint256(1)), _actions, 0)
-        );
-        vm.assertTrue(
-            executeSelectorCondition.isGranted(
-                address(0),
-                address(0),
-                bytes32(0),
-                _calldata
-            )
-        );
+        bytes memory calldataPayload = abi.encodeCall(IExecutor.execute, (bytes32(0), actions, 0));
+        assertTrue(executeSelectorCondition.isGranted(address(0), address(0), bytes32(0), calldataPayload));
     }
 
-    modifier whenCallingAllowSelector() {
+    function test_GivenTheSelectorIsNotAllowedForTheTarget()
+        external
+        view
+        whenCallingIsGranted
+        givenTheCalldataIsForIExecutorexecute
+        givenASingleActionIsAFunctionCallValue0
+    {
+        // It should return false
+        Action[] memory actions = new Action[](1);
+        actions[0].to = address(dao);
+        actions[0].value = 0;
+        actions[0].data = abi.encodeCall(DAO.setMetadata, ("new metadata"));
+
+        bytes memory calldataPayload = abi.encodeCall(IExecutor.execute, (bytes32(0), actions, 0));
+        assertFalse(executeSelectorCondition.isGranted(address(0), address(0), bytes32(0), calldataPayload));
+    }
+
+    modifier givenASingleActionIsAFunctionCallWithValue() {
         _;
     }
 
-    function test_RevertGiven_TheCallerHasNoPermission()
+    function test_GivenTheSelectorAndETHTransfersAreAllowedForTheTarget()
         external
-        whenCallingAllowSelector
+        whenCallingIsGranted
+        givenTheCalldataIsForIExecutorexecute
+        givenASingleActionIsAFunctionCallWithValue
     {
+        // It should return true
+        dao.grant(address(executeSelectorCondition), alice, MANAGE_SELECTORS_PERMISSION_ID);
+        ExecuteSelectorCondition.SelectorTarget memory entry;
+        entry.where = address(dao);
+        entry.selectors = new bytes4[](1);
+        entry.selectors[0] = DAO.setMetadata.selector;
+        executeSelectorCondition.allowSelectors(entry);
+        executeSelectorCondition.allowEthTransfers(address(dao));
+
+        Action[] memory actions = new Action[](1);
+        actions[0].to = address(dao);
+        actions[0].value = 1 ether;
+        actions[0].data = abi.encodeCall(DAO.setMetadata, ("new metadata"));
+
+        bytes memory calldataPayload = abi.encodeCall(IExecutor.execute, (bytes32(0), actions, 0));
+        assertTrue(executeSelectorCondition.isGranted(address(0), address(0), bytes32(0), calldataPayload));
+    }
+
+    function test_GivenTheSelectorIsAllowedButETHTransfersAreNot()
+        external
+        whenCallingIsGranted
+        givenTheCalldataIsForIExecutorexecute
+        givenASingleActionIsAFunctionCallWithValue
+    {
+        // It should return false
+        dao.grant(address(executeSelectorCondition), alice, MANAGE_SELECTORS_PERMISSION_ID);
+        ExecuteSelectorCondition.SelectorTarget memory entry;
+        entry.where = address(dao);
+        entry.selectors = new bytes4[](1);
+        entry.selectors[0] = DAO.setMetadata.selector;
+        executeSelectorCondition.allowSelectors(entry);
+        // Note: ETH transfers are not allowed
+
+        Action[] memory actions = new Action[](1);
+        actions[0].to = address(dao);
+        actions[0].value = 1 ether;
+        actions[0].data = abi.encodeCall(DAO.setMetadata, ("new metadata"));
+
+        bytes memory calldataPayload = abi.encodeCall(IExecutor.execute, (bytes32(0), actions, 0));
+        assertFalse(executeSelectorCondition.isGranted(address(0), address(0), bytes32(0), calldataPayload));
+    }
+
+    modifier givenASingleActionIsAPureETHTransferCalldataIsEmpty() {
+        _;
+    }
+
+    function test_GivenValueIsNonZeroAndETHTransfersAreAllowedForTheTarget()
+        external
+        whenCallingIsGranted
+        givenTheCalldataIsForIExecutorexecute
+        givenASingleActionIsAPureETHTransferCalldataIsEmpty
+    {
+        // It should return true
+        dao.grant(address(executeSelectorCondition), alice, MANAGE_SELECTORS_PERMISSION_ID);
+        executeSelectorCondition.allowEthTransfers(carol);
+
+        Action[] memory actions = new Action[](1);
+        actions[0].to = carol;
+        actions[0].value = 1 ether;
+        actions[0].data = "";
+
+        bytes memory calldataPayload = abi.encodeCall(IExecutor.execute, (bytes32(0), actions, 0));
+        assertTrue(executeSelectorCondition.isGranted(address(0), address(0), bytes32(0), calldataPayload));
+    }
+
+    function test_GivenValueIsNonZeroAndETHTransfersAreNotAllowedForTheTarget()
+        external
+        view
+        whenCallingIsGranted
+        givenTheCalldataIsForIExecutorexecute
+        givenASingleActionIsAPureETHTransferCalldataIsEmpty
+    {
+        // It should return false
+        Action[] memory actions = new Action[](1);
+        actions[0].to = carol;
+        actions[0].value = 1 ether;
+        actions[0].data = "";
+
+        bytes memory calldataPayload = abi.encodeCall(IExecutor.execute, (bytes32(0), actions, 0));
+        assertFalse(executeSelectorCondition.isGranted(address(0), address(0), bytes32(0), calldataPayload));
+    }
+
+    function test_GivenValueIs0()
+        external
+        whenCallingIsGranted
+        givenTheCalldataIsForIExecutorexecute
+        givenASingleActionIsAPureETHTransferCalldataIsEmpty
+    {
+        // It should return false
+        dao.grant(address(executeSelectorCondition), alice, MANAGE_SELECTORS_PERMISSION_ID);
+        executeSelectorCondition.allowEthTransfers(carol);
+
+        Action[] memory actions = new Action[](1);
+        actions[0].to = carol;
+        actions[0].value = 0;
+        actions[0].data = "";
+
+        bytes memory calldataPayload = abi.encodeCall(IExecutor.execute, (bytes32(0), actions, 0));
+        assertFalse(executeSelectorCondition.isGranted(address(0), address(0), bytes32(0), calldataPayload));
+    }
+
+    modifier givenThereAreMultipleActions() {
+        _;
+    }
+
+    function test_GivenAllActionsAreIndividuallyPermitted()
+        external
+        whenCallingIsGranted
+        givenTheCalldataIsForIExecutorexecute
+        givenThereAreMultipleActions
+    {
+        // It should return true
+        dao.grant(address(executeSelectorCondition), alice, MANAGE_SELECTORS_PERMISSION_ID);
+        ExecuteSelectorCondition.SelectorTarget memory entry;
+        entry.where = address(dao);
+        entry.selectors = new bytes4[](1);
+        entry.selectors[0] = DAO.setMetadata.selector;
+        executeSelectorCondition.allowSelectors(entry);
+        executeSelectorCondition.allowEthTransfers(carol);
+        executeSelectorCondition.allowEthTransfers(address(dao)); // Allow ETH transfer for action 2
+
+        Action[] memory actions = new Action[](3);
+        // Action 0: Function call, no value, allowed selector
+        actions[0].to = address(dao);
+        actions[0].value = 0;
+        actions[0].data = abi.encodeCall(DAO.setMetadata, ("meta"));
+        // Action 1: Pure ETH transfer, allowed
+        actions[1].to = carol;
+        actions[1].value = 1 ether;
+        actions[1].data = "";
+        // Action 2: Function call, with value, allowed selector and ETH transfer
+        actions[2].to = address(dao);
+        actions[2].value = 0.5 ether;
+        actions[2].data = abi.encodeCall(DAO.setMetadata, ("meta2"));
+
+        bytes memory calldataPayload = abi.encodeCall(IExecutor.execute, (bytes32(0), actions, 0));
+        assertTrue(executeSelectorCondition.isGranted(address(0), address(0), bytes32(0), calldataPayload));
+    }
+
+    function test_GivenAnAllowedETHTransferIsFollowedByADisallowedFunctionCall()
+        external
+        whenCallingIsGranted
+        givenTheCalldataIsForIExecutorexecute
+        givenThereAreMultipleActions
+    {
+        // It should correctly return false
+        dao.grant(address(executeSelectorCondition), alice, MANAGE_SELECTORS_PERMISSION_ID);
+        executeSelectorCondition.allowEthTransfers(carol);
+        // Note: DAO.setMetadata.selector is NOT allowed
+
+        Action[] memory actions = new Action[](2);
+        // Action 0: Pure ETH transfer, allowed
+        actions[0].to = carol;
+        actions[0].value = 1 ether;
+        actions[0].data = "";
+        // Action 1: Function call, disallowed selector
+        actions[1].to = address(dao);
+        actions[1].value = 0;
+        actions[1].data = abi.encodeCall(DAO.setMetadata, ("meta"));
+
+        bytes memory calldataPayload = abi.encodeCall(IExecutor.execute, (bytes32(0), actions, 0));
+        assertFalse(executeSelectorCondition.isGranted(address(0), address(0), bytes32(0), calldataPayload));
+    }
+
+    modifier whenCallingAllowSelectors() {
+        _;
+    }
+
+    function test_RevertGiven_TheCallerDoesNotHaveTheMANAGESELECTORSPERMISSIONID() external whenCallingAllowSelectors {
         // It should revert
-
-        ExecuteSelectorCondition.SelectorTarget
-            memory _target = ExecuteSelectorCondition.SelectorTarget({
-                selectors: new bytes4[](1),
-                where: address(dao)
-            });
-        _target.selectors[0] = DAO.setMetadata.selector;
-
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                DaoUnauthorized.selector,
-                address(dao),
-                address(executeSelectorCondition),
-                address(alice),
-                MANAGE_SELECTORS_PERMISSION_ID
-            )
-        );
-        executeSelectorCondition.allowSelectors(_target);
+        ExecuteSelectorCondition.SelectorTarget memory entry;
+        entry.where = address(dao);
+        entry.selectors = new bytes4[](1);
+        entry.selectors[0] = DUMMY_SELECTOR_1;
 
         vm.startPrank(bob);
         vm.expectRevert(
@@ -829,410 +382,304 @@ contract ExecuteSelectorConditionTest is AragonTest {
                 DaoUnauthorized.selector,
                 address(dao),
                 address(executeSelectorCondition),
-                address(bob),
+                bob,
                 MANAGE_SELECTORS_PERMISSION_ID
             )
         );
-        executeSelectorCondition.allowSelectors(_target);
+        executeSelectorCondition.allowSelectors(entry);
+    }
 
-        vm.startPrank(carol);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                DaoUnauthorized.selector,
-                address(dao),
-                address(executeSelectorCondition),
-                address(carol),
-                MANAGE_SELECTORS_PERMISSION_ID
-            )
-        );
-        executeSelectorCondition.allowSelectors(_target);
-
-        // Now grant it
+    modifier givenTheCallerHasTheMANAGESELECTORSPERMISSIONID() {
         vm.startPrank(alice);
-        dao.grant(
-            address(executeSelectorCondition),
-            bob,
-            MANAGE_SELECTORS_PERMISSION_ID
-        );
-
-        vm.startPrank(bob);
-        executeSelectorCondition.allowSelectors(_target);
-    }
-
-    function test_RevertGiven_TheSelectorIsAlreadyAllowed()
-        external
-        whenCallingAllowSelector
-    {
-        // It should revert
-
-        ExecuteSelectorCondition.SelectorTarget[]
-            memory _entries = new ExecuteSelectorCondition.SelectorTarget[](4);
-        _entries[0].selectors = new bytes4[](1);
-        _entries[0].selectors[0] = bytes4(uint32(1));
-        _entries[0].where = address(this);
-        _entries[1].selectors = new bytes4[](1);
-        _entries[1].selectors[0] = bytes4(uint32(2));
-        _entries[1].where = address(dao);
-        _entries[2].selectors = new bytes4[](1);
-        _entries[2].selectors[0] = bytes4(uint32(3));
-        _entries[2].where = alice;
-        _entries[3].selectors = new bytes4[](1);
-        _entries[3].selectors[0] = bytes4(uint32(4));
-        _entries[3].where = bob;
-
-        executeSelectorCondition = ExecuteSelectorCondition(
-            factory.deployExecuteSelectorCondition(dao, _entries)
-        );
-
-        dao.grant(
-            address(executeSelectorCondition),
-            bob,
-            MANAGE_SELECTORS_PERMISSION_ID
-        );
-
-        vm.startPrank(bob);
-
-        // KO
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                ExecuteSelectorCondition.AlreadyAllowed.selector,
-                bytes4(uint32(1)),
-                address(this)
-            )
-        );
-        executeSelectorCondition.allowSelectors(_entries[0]);
-
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                ExecuteSelectorCondition.AlreadyAllowed.selector,
-                bytes4(uint32(2)),
-                address(dao)
-            )
-        );
-        executeSelectorCondition.allowSelectors(_entries[1]);
-    }
-
-    function test_GivenTheCallerHasPermission()
-        external
-        whenCallingAllowSelector
-    {
-        // It should succeed
-        // It should emit an event
-        // It allowedSelectors should return true
-
-        // Still false
-        assertFalse(
-            executeSelectorCondition.allowedSelectors(
-                address(dao),
-                DAO.setMetadata.selector
-            )
-        );
-        assertFalse(
-            executeSelectorCondition.allowedSelectors(
-                address(dao),
-                DAO.execute.selector
-            )
-        );
-        assertFalse(
-            executeSelectorCondition.allowedSelectors(
-                address(executeSelectorCondition),
-                ExecuteSelectorCondition.allowSelectors.selector
-            )
-        );
-
-        // Permission
-        dao.grant(
-            address(executeSelectorCondition),
-            bob,
-            MANAGE_SELECTORS_PERMISSION_ID
-        );
-
-        ExecuteSelectorCondition.SelectorTarget[]
-            memory _entries = new ExecuteSelectorCondition.SelectorTarget[](2);
-        _entries[0].selectors = new bytes4[](2);
-        _entries[0].selectors[0] = DAO.setMetadata.selector;
-        _entries[0].selectors[1] = DAO.execute.selector;
-        _entries[0].where = address(dao);
-        _entries[1].selectors = new bytes4[](1);
-        _entries[1].selectors[0] = ExecuteSelectorCondition
-            .allowSelectors
-            .selector;
-        _entries[1].where = address(executeSelectorCondition);
-
-        vm.startPrank(bob);
-
-        vm.expectEmit();
-        emit SelectorAllowed(DAO.setMetadata.selector, address(dao));
-        vm.expectEmit();
-        emit SelectorAllowed(DAO.execute.selector, address(dao));
-        executeSelectorCondition.allowSelectors(_entries[0]);
-
-        vm.expectEmit();
-        emit SelectorAllowed(
-            ExecuteSelectorCondition.allowSelectors.selector,
-            address(executeSelectorCondition)
-        );
-        executeSelectorCondition.allowSelectors(_entries[1]);
-
-        // Now true
-        vm.assertTrue(
-            executeSelectorCondition.allowedSelectors(
-                address(dao),
-                DAO.setMetadata.selector
-            )
-        );
-        vm.assertTrue(
-            executeSelectorCondition.allowedSelectors(
-                address(dao),
-                DAO.execute.selector
-            )
-        );
-        vm.assertTrue(
-            executeSelectorCondition.allowedSelectors(
-                address(executeSelectorCondition),
-                ExecuteSelectorCondition.allowSelectors.selector
-            )
-        );
-    }
-
-    modifier whenCallingRemoveSelector() {
+        dao.grant(address(executeSelectorCondition), alice, MANAGE_SELECTORS_PERMISSION_ID);
         _;
     }
 
-    function test_RevertGiven_TheCallerHasNoPermission2()
+    function test_GivenTheEntryContainsOnlyNewUnallowedSelectors()
         external
-        whenCallingRemoveSelector
+        whenCallingAllowSelectors
+        givenTheCallerHasTheMANAGESELECTORSPERMISSIONID
     {
-        // It should revert
+        // It should succeed, update state, and emit a SelectorAllowed event for each selector
+        assertFalse(executeSelectorCondition.allowedSelectors(address(dao), DUMMY_SELECTOR_1));
+        assertFalse(executeSelectorCondition.allowedSelectors(address(dao), DUMMY_SELECTOR_2));
 
-        ExecuteSelectorCondition.SelectorTarget[]
-            memory _entries = new ExecuteSelectorCondition.SelectorTarget[](2);
-        _entries[0].selectors = new bytes4[](2);
-        _entries[0].selectors[0] = DAO.setMetadata.selector;
-        _entries[0].selectors[1] = DAO.execute.selector;
-        _entries[0].where = address(dao);
-        _entries[1].selectors = new bytes4[](1);
-        _entries[1].selectors[0] = ExecuteSelectorCondition
-            .allowSelectors
-            .selector;
-        _entries[1].where = address(executeSelectorCondition);
+        ExecuteSelectorCondition.SelectorTarget memory entry;
+        entry.where = address(dao);
+        entry.selectors = new bytes4[](2);
+        entry.selectors[0] = DUMMY_SELECTOR_1;
+        entry.selectors[1] = DUMMY_SELECTOR_2;
 
-        dao.grant(
-            address(executeSelectorCondition),
-            alice,
-            MANAGE_SELECTORS_PERMISSION_ID
-        );
-        executeSelectorCondition.allowSelectors(_entries[0]);
-        executeSelectorCondition.allowSelectors(_entries[1]);
-        dao.revoke(
-            address(executeSelectorCondition),
-            alice,
-            MANAGE_SELECTORS_PERMISSION_ID
-        );
+        vm.expectEmit(true, true, true, true);
+        emit SelectorAllowed(DUMMY_SELECTOR_1, address(dao));
+        vm.expectEmit(true, true, true, true);
+        emit SelectorAllowed(DUMMY_SELECTOR_2, address(dao));
+        executeSelectorCondition.allowSelectors(entry);
 
-        // Try to remove
-
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                DaoUnauthorized.selector,
-                address(dao),
-                address(executeSelectorCondition),
-                address(alice),
-                MANAGE_SELECTORS_PERMISSION_ID
-            )
-        );
-        executeSelectorCondition.disallowSelectors(_entries[0]);
-
-        vm.startPrank(bob);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                DaoUnauthorized.selector,
-                address(dao),
-                address(executeSelectorCondition),
-                address(bob),
-                MANAGE_SELECTORS_PERMISSION_ID
-            )
-        );
-        executeSelectorCondition.disallowSelectors(_entries[1]);
-
-        vm.startPrank(carol);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                DaoUnauthorized.selector,
-                address(dao),
-                address(executeSelectorCondition),
-                address(carol),
-                MANAGE_SELECTORS_PERMISSION_ID
-            )
-        );
-        executeSelectorCondition.disallowSelectors(_entries[1]);
+        assertTrue(executeSelectorCondition.allowedSelectors(address(dao), DUMMY_SELECTOR_1));
+        assertTrue(executeSelectorCondition.allowedSelectors(address(dao), DUMMY_SELECTOR_2));
     }
 
-    function test_RevertGiven_TheSelectorIsNotAllowed()
+    function test_GivenTheEntryContainsOnlySelectorsThatAreAlreadyAllowed()
         external
-        whenCallingRemoveSelector
+        whenCallingAllowSelectors
+        givenTheCallerHasTheMANAGESELECTORSPERMISSIONID
     {
-        // It should revert
+        // It should succeed silently without emitting any events or changing state
+        ExecuteSelectorCondition.SelectorTarget memory entry;
+        entry.where = address(dao);
+        entry.selectors = new bytes4[](1);
+        entry.selectors[0] = DUMMY_SELECTOR_1;
+        executeSelectorCondition.allowSelectors(entry); // First time allowance
+        assertTrue(executeSelectorCondition.allowedSelectors(address(dao), DUMMY_SELECTOR_1));
 
-        dao.grant(
-            address(executeSelectorCondition),
-            bob,
-            MANAGE_SELECTORS_PERMISSION_ID
-        );
-
-        ExecuteSelectorCondition.SelectorTarget[]
-            memory _entries = new ExecuteSelectorCondition.SelectorTarget[](3);
-        _entries[0].selectors = new bytes4[](1);
-        _entries[0].selectors[0] = bytes4(uint32(1));
-        _entries[0].where = address(this);
-        _entries[1].selectors = new bytes4[](1);
-        _entries[1].selectors[0] = DAO.execute.selector;
-        _entries[1].where = address(dao);
-        _entries[2].selectors = new bytes4[](1);
-        _entries[2].selectors[0] = DAO.setMetadata.selector;
-        _entries[2].where = address(dao);
-
-        // KO
-        vm.startPrank(bob);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                ExecuteSelectorCondition.AlreadyDisallowed.selector,
-                bytes4(uint32(1)),
-                address(this)
-            )
-        );
-        executeSelectorCondition.disallowSelectors(_entries[0]);
-
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                ExecuteSelectorCondition.AlreadyDisallowed.selector,
-                DAO.execute.selector,
-                address(dao)
-            )
-        );
-        executeSelectorCondition.disallowSelectors(_entries[1]);
-
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                ExecuteSelectorCondition.AlreadyDisallowed.selector,
-                DAO.setMetadata.selector,
-                address(dao)
-            )
-        );
-        executeSelectorCondition.disallowSelectors(_entries[2]);
+        executeSelectorCondition.allowSelectors(entry); // Second time
+        assertTrue(executeSelectorCondition.allowedSelectors(address(dao), DUMMY_SELECTOR_1));
     }
 
-    function test_GivenTheCallerHasPermission2()
+    function test_GivenTheEntryContainsAMixOfNewAndAlreadyallowedSelectors()
         external
-        whenCallingRemoveSelector
+        whenCallingAllowSelectors
+        givenTheCallerHasTheMANAGESELECTORSPERMISSIONID
     {
-        // It should succeed
-        // It should emit an event
-        // It allowedSelectors should return false
+        // It should succeed and only update state and emit events for the new selectors
+        ExecuteSelectorCondition.SelectorTarget memory initialEntry;
+        initialEntry.where = address(dao);
+        initialEntry.selectors = new bytes4[](1);
+        initialEntry.selectors[0] = DUMMY_SELECTOR_1;
+        executeSelectorCondition.allowSelectors(initialEntry); // Allow selector 1
+        assertTrue(executeSelectorCondition.allowedSelectors(address(dao), DUMMY_SELECTOR_1));
+        assertFalse(executeSelectorCondition.allowedSelectors(address(dao), DUMMY_SELECTOR_2));
 
-        // Permission
-        dao.grant(
-            address(executeSelectorCondition),
-            bob,
-            MANAGE_SELECTORS_PERMISSION_ID
-        );
+        ExecuteSelectorCondition.SelectorTarget memory mixedEntry;
+        mixedEntry.where = address(dao);
+        mixedEntry.selectors = new bytes4[](2);
+        mixedEntry.selectors[0] = DUMMY_SELECTOR_1; // Already allowed
+        mixedEntry.selectors[1] = DUMMY_SELECTOR_2; // New
 
-        ExecuteSelectorCondition.SelectorTarget[]
-            memory _entries = new ExecuteSelectorCondition.SelectorTarget[](3);
-        _entries[0].selectors = new bytes4[](1);
-        _entries[0].selectors[0] = DAO.setMetadata.selector;
-        _entries[0].where = address(dao);
-        _entries[1].selectors = new bytes4[](1);
-        _entries[1].selectors[0] = DAO.execute.selector;
-        _entries[1].where = address(dao);
-        _entries[2].selectors = new bytes4[](1);
-        _entries[2].selectors[0] = ExecuteSelectorCondition
-            .allowSelectors
-            .selector;
-        _entries[2].where = address(executeSelectorCondition);
+        vm.expectEmit(true, true, true, true); // Only one event for the new selector
+        emit SelectorAllowed(DUMMY_SELECTOR_2, address(dao));
+        executeSelectorCondition.allowSelectors(mixedEntry);
 
-        // allow first
+        assertTrue(executeSelectorCondition.allowedSelectors(address(dao), DUMMY_SELECTOR_1));
+        assertTrue(executeSelectorCondition.allowedSelectors(address(dao), DUMMY_SELECTOR_2));
+    }
+
+    modifier whenCallingDisallowSelectors() {
+        _;
+    }
+
+    function test_RevertGiven_TheCallerDoesNotHaveTheMANAGESELECTORSPERMISSIONID2()
+        external
+        whenCallingDisallowSelectors
+    {
+        // It should revert
+        ExecuteSelectorCondition.SelectorTarget memory entry;
+        entry.where = address(dao);
+        entry.selectors = new bytes4[](1);
+        entry.selectors[0] = DUMMY_SELECTOR_1;
+
         vm.startPrank(bob);
-        executeSelectorCondition.allowSelectors(_entries[0]);
-        executeSelectorCondition.allowSelectors(_entries[1]);
-        executeSelectorCondition.allowSelectors(_entries[2]);
-
-        vm.assertTrue(
-            executeSelectorCondition.allowedSelectors(
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                DaoUnauthorized.selector,
                 address(dao),
-                DAO.setMetadata.selector
-            )
-        );
-        vm.assertTrue(
-            executeSelectorCondition.allowedSelectors(
-                address(dao),
-                DAO.execute.selector
-            )
-        );
-        vm.assertTrue(
-            executeSelectorCondition.allowedSelectors(
                 address(executeSelectorCondition),
-                ExecuteSelectorCondition.allowSelectors.selector
+                bob,
+                MANAGE_SELECTORS_PERMISSION_ID
             )
         );
+        executeSelectorCondition.disallowSelectors(entry);
+    }
 
-        // Then remove
-        vm.expectEmit();
-        emit SelectorDisallowed(DAO.setMetadata.selector, address(dao));
-        executeSelectorCondition.disallowSelectors(_entries[0]);
+    modifier givenTheCallerHasTheMANAGESELECTORSPERMISSIONID2() {
+        vm.startPrank(alice);
+        dao.grant(address(executeSelectorCondition), alice, MANAGE_SELECTORS_PERMISSION_ID);
+        _;
+    }
 
-        vm.expectEmit();
-        emit SelectorDisallowed(DAO.execute.selector, address(dao));
-        executeSelectorCondition.disallowSelectors(_entries[1]);
+    function test_GivenTheEntryContainsSelectorsThatAreCurrentlyAllowed()
+        external
+        whenCallingDisallowSelectors
+        givenTheCallerHasTheMANAGESELECTORSPERMISSIONID2
+    {
+        // It should succeed, update state, and emit a SelectorDisallowed event for each selector
+        ExecuteSelectorCondition.SelectorTarget memory entry;
+        entry.where = address(dao);
+        entry.selectors = new bytes4[](1);
+        entry.selectors[0] = DUMMY_SELECTOR_1;
+        executeSelectorCondition.allowSelectors(entry);
+        assertTrue(executeSelectorCondition.allowedSelectors(address(dao), DUMMY_SELECTOR_1));
 
-        vm.expectEmit();
-        emit SelectorDisallowed(
-            ExecuteSelectorCondition.allowSelectors.selector,
-            address(executeSelectorCondition)
-        );
-        executeSelectorCondition.disallowSelectors(_entries[2]);
+        vm.expectEmit(true, true, true, true);
+        emit SelectorDisallowed(DUMMY_SELECTOR_1, address(dao));
+        executeSelectorCondition.disallowSelectors(entry);
+        assertFalse(executeSelectorCondition.allowedSelectors(address(dao), DUMMY_SELECTOR_1));
+    }
 
-        // Now false
-        assertFalse(
-            executeSelectorCondition.allowedSelectors(
+    function test_GivenTheEntryContainsOnlySelectorsThatAreAlreadyDisallowed()
+        external
+        whenCallingDisallowSelectors
+        givenTheCallerHasTheMANAGESELECTORSPERMISSIONID2
+    {
+        // It should succeed silently without emitting any events or changing state
+        assertFalse(executeSelectorCondition.allowedSelectors(address(dao), DUMMY_SELECTOR_1));
+        ExecuteSelectorCondition.SelectorTarget memory entry;
+        entry.where = address(dao);
+        entry.selectors = new bytes4[](1);
+        entry.selectors[0] = DUMMY_SELECTOR_1;
+
+        executeSelectorCondition.disallowSelectors(entry);
+        assertFalse(executeSelectorCondition.allowedSelectors(address(dao), DUMMY_SELECTOR_1));
+    }
+
+    function test_GivenTheEntryContainsAMixOfAllowedAndAlreadydisallowedSelectors()
+        external
+        whenCallingDisallowSelectors
+        givenTheCallerHasTheMANAGESELECTORSPERMISSIONID2
+    {
+        // It should succeed and only update state and emit events for the selectors that were actually allowed
+        ExecuteSelectorCondition.SelectorTarget memory entry;
+        entry.where = address(dao);
+        entry.selectors = new bytes4[](1);
+        entry.selectors[0] = DUMMY_SELECTOR_1;
+        executeSelectorCondition.allowSelectors(entry); // Allow selector 1
+        assertTrue(executeSelectorCondition.allowedSelectors(address(dao), DUMMY_SELECTOR_1));
+        assertFalse(executeSelectorCondition.allowedSelectors(address(dao), DUMMY_SELECTOR_2));
+
+        ExecuteSelectorCondition.SelectorTarget memory mixedEntry;
+        mixedEntry.where = address(dao);
+        mixedEntry.selectors = new bytes4[](2);
+        mixedEntry.selectors[0] = DUMMY_SELECTOR_1; // Allowed
+        mixedEntry.selectors[1] = DUMMY_SELECTOR_2; // Already disallowed
+
+        vm.expectEmit(true, true, true, true);
+        emit SelectorDisallowed(DUMMY_SELECTOR_1, address(dao));
+        executeSelectorCondition.disallowSelectors(mixedEntry);
+        assertFalse(executeSelectorCondition.allowedSelectors(address(dao), DUMMY_SELECTOR_1));
+        assertFalse(executeSelectorCondition.allowedSelectors(address(dao), DUMMY_SELECTOR_2));
+    }
+
+    modifier whenCallingAllowEthTransfers() {
+        _;
+    }
+
+    function test_RevertGiven_TheCallerDoesNotHaveTheMANAGESELECTORSPERMISSIONID3()
+        external
+        whenCallingAllowEthTransfers
+    {
+        // It should revert
+        vm.startPrank(bob);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                DaoUnauthorized.selector,
                 address(dao),
-                DAO.setMetadata.selector
-            )
-        );
-        assertFalse(
-            executeSelectorCondition.allowedSelectors(
-                address(dao),
-                DAO.execute.selector
-            )
-        );
-        assertFalse(
-            executeSelectorCondition.allowedSelectors(
                 address(executeSelectorCondition),
-                ExecuteSelectorCondition.allowSelectors.selector
+                bob,
+                MANAGE_SELECTORS_PERMISSION_ID
             )
         );
+        executeSelectorCondition.allowEthTransfers(carol);
+    }
+
+    modifier givenTheCallerHasTheMANAGESELECTORSPERMISSIONID3() {
+        vm.startPrank(alice);
+        dao.grant(address(executeSelectorCondition), alice, MANAGE_SELECTORS_PERMISSION_ID);
+        _;
+    }
+
+    function test_GivenETHTransfersAreNotYetAllowedForTheTargetAddress()
+        external
+        whenCallingAllowEthTransfers
+        givenTheCallerHasTheMANAGESELECTORSPERMISSIONID3
+    {
+        // It should succeed, update state, and emit an EthTransfersAllowed event
+        assertFalse(executeSelectorCondition.allowedEthTransfers(carol));
+
+        vm.expectEmit(true, true, true, true);
+        emit EthTransfersAllowed(carol);
+        executeSelectorCondition.allowEthTransfers(carol);
+
+        assertTrue(executeSelectorCondition.allowedEthTransfers(carol));
+    }
+
+    function test_GivenETHTransfersAreAlreadyAllowedForTheTargetAddress()
+        external
+        whenCallingAllowEthTransfers
+        givenTheCallerHasTheMANAGESELECTORSPERMISSIONID3
+    {
+        // It should succeed silently without emitting an event or changing state
+        executeSelectorCondition.allowEthTransfers(carol); // Allow first time
+        assertTrue(executeSelectorCondition.allowedEthTransfers(carol));
+
+        executeSelectorCondition.allowEthTransfers(carol); // Allow second time
+        assertTrue(executeSelectorCondition.allowedEthTransfers(carol));
+    }
+
+    modifier whenCallingDisallowEthTransfers() {
+        _;
+    }
+
+    function test_RevertGiven_TheCallerDoesNotHaveTheMANAGESELECTORSPERMISSIONID4()
+        external
+        whenCallingDisallowEthTransfers
+    {
+        // It should revert
+        vm.startPrank(bob);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                DaoUnauthorized.selector,
+                address(dao),
+                address(executeSelectorCondition),
+                bob,
+                MANAGE_SELECTORS_PERMISSION_ID
+            )
+        );
+        executeSelectorCondition.disallowEthTransfers(carol);
+    }
+
+    modifier givenTheCallerHasTheMANAGESELECTORSPERMISSIONID4() {
+        vm.startPrank(alice);
+        dao.grant(address(executeSelectorCondition), alice, MANAGE_SELECTORS_PERMISSION_ID);
+        _;
+    }
+
+    function test_GivenETHTransfersAreCurrentlyAllowedForTheTargetAddress()
+        external
+        whenCallingDisallowEthTransfers
+        givenTheCallerHasTheMANAGESELECTORSPERMISSIONID4
+    {
+        // It should succeed, update state, and emit an EthTransfersDisallowed event
+        executeSelectorCondition.allowEthTransfers(carol);
+        assertTrue(executeSelectorCondition.allowedEthTransfers(carol));
+
+        vm.expectEmit(true, true, true, true);
+        emit EthTransfersDisallowed(carol);
+        executeSelectorCondition.disallowEthTransfers(carol);
+
+        assertFalse(executeSelectorCondition.allowedEthTransfers(carol));
+    }
+
+    function test_GivenETHTransfersAreNotCurrentlyAllowedForTheTargetAddress()
+        external
+        whenCallingDisallowEthTransfers
+        givenTheCallerHasTheMANAGESELECTORSPERMISSIONID4
+    {
+        // It should succeed silently without emitting an event or changing state
+        assertFalse(executeSelectorCondition.allowedEthTransfers(carol));
+
+        executeSelectorCondition.disallowEthTransfers(carol);
+        assertFalse(executeSelectorCondition.allowedEthTransfers(carol));
     }
 
     function test_WhenCallingSupportsInterface() external view {
-        // It does not support the empty interface
-        // It supports IPermissionCondition
-
-        // It does not support the empty interface
-        bool supported = executeSelectorCondition.supportsInterface(
-            bytes4(0xffffffff)
-        );
-        assertEq(supported, false, "Should not support the empty interface");
-
-        // It supports IERC165Upgradeable
-        supported = executeSelectorCondition.supportsInterface(
-            type(IERC165Upgradeable).interfaceId
-        );
-        assertEq(supported, true, "Should support IERC165Upgradeable");
-
-        // It supports IPermissionCondition
-        supported = executeSelectorCondition.supportsInterface(
-            type(IPermissionCondition).interfaceId
-        );
-        assertEq(supported, true, "Should support IPermissionCondition");
+        // It should return true for the IPermissionCondition interface ID
+        assertTrue(executeSelectorCondition.supportsInterface(type(IPermissionCondition).interfaceId));
+        // It should return true for the ERC165 interface ID
+        assertTrue(executeSelectorCondition.supportsInterface(type(IERC165Upgradeable).interfaceId));
+        // It should return false for a random interface ID
+        assertFalse(executeSelectorCondition.supportsInterface(0x12345678));
+        // It should return false for the null interface ID (0xffffffff)
+        assertFalse(executeSelectorCondition.supportsInterface(0xffffffff));
     }
 }

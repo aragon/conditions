@@ -62,6 +62,9 @@ clean: ## Clean the build artifacts
 
 ##
 
+test: export RPC_URL=""
+test-coverage: export RPC_URL=""
+
 .PHONY: test
 test: ## Run unit tests, locally
 	forge test $(VERBOSITY)

@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.22;
 
+/// @notice Extracts the selector given the calldata. If no calldata is passed, it returns zero
 function getSelector(bytes memory _data) pure returns (bytes4 selector) {
     if (_data.length < 4) revert("Data is too short");
 

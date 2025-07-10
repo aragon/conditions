@@ -30,18 +30,18 @@ ExecuteSelectorConditionTest:
                   - it: should return false
           - given: a single action is a function call with value > 0
             and:
-              - given: the selector and ETH transfers are allowed for the target
+              - given: the selector and native transfers are allowed for the target
                 then:
                   - it: should return true
-              - given: the selector is allowed but ETH transfers are not
+              - given: the selector is allowed but native transfers are not
                 then:
                   - it: should return false
-          - given: a single action is a pure ETH transfer (calldata is empty)
+          - given: a single action is a pure native transfer (calldata is empty)
             and:
-              - given: value > 0 and ETH transfers are allowed for the target
+              - given: value > 0 and native transfers are allowed for the target
                 then:
                   - it: should return true
-              - given: value > 0 and ETH transfers are not allowed for the target
+              - given: value > 0 and native transfers are not allowed for the target
                 then:
                   - it: should return false
               - given: value is 0
@@ -52,7 +52,7 @@ ExecuteSelectorConditionTest:
               - given: all actions are individually permitted
                 then:
                   - it: should return true
-              - given: an allowed ETH transfer is followed by a disallowed function call
+              - given: an allowed native transfer is followed by a disallowed function call
                 then:
                   - it: should correctly return false
 
@@ -90,31 +90,31 @@ ExecuteSelectorConditionTest:
             then:
               - it: should succeed and only update state and emit events for the selectors that were actually allowed
 
-  - when: calling allowEthTransfers
+  - when: calling allowNativeTransfers
     and:
       - given: the caller does not have the MANAGE_SELECTORS_PERMISSION_ID
         then:
           - it: should revert
       - given: the caller has the MANAGE_SELECTORS_PERMISSION_ID
         and:
-          - given: ETH transfers are not yet allowed for the target address
+          - given: Native transfers are not yet allowed for the target address
             then:
-              - it: should succeed, update state, and emit an EthTransfersAllowed event
-          - given: ETH transfers are already allowed for the target address
+              - it: should succeed, update state, and emit an NativeTransfersAllowed event
+          - given: Native transfers are already allowed for the target address
             then:
               - it: should succeed silently without emitting an event or changing state
 
-  - when: calling disallowEthTransfers
+  - when: calling disallowNativeTransfers
     and:
       - given: the caller does not have the MANAGE_SELECTORS_PERMISSION_ID
         then:
           - it: should revert
       - given: the caller has the MANAGE_SELECTORS_PERMISSION_ID
         and:
-          - given: ETH transfers are currently allowed for the target address
+          - given: Native transfers are currently allowed for the target address
             then:
-              - it: should succeed, update state, and emit an EthTransfersDisallowed event
-          - given: ETH transfers are not currently allowed for the target address
+              - it: should succeed, update state, and emit an NativeTransfersDisallowed event
+          - given: Native transfers are not currently allowed for the target address
             then:
               - it: should succeed silently without emitting an event or changing state
 

@@ -18,7 +18,7 @@ contract ExecuteSelectorCondition is ERC165, IPermissionCondition, DaoAuthorizab
         /// @notice The address where the selectors below can be invoked
         address where;
         /// @notice The list of function selectors that can be invoked within an execute() call.
-        /// @notice Plain eth transfers should contain 0 as the selector.
+        /// @notice Plain native transfers should contain 0 as the selector.
         bytes4[] selectors;
     }
 
@@ -26,8 +26,8 @@ contract ExecuteSelectorCondition is ERC165, IPermissionCondition, DaoAuthorizab
     /// @dev allowedSelectors[where][selector]
     mapping(address => mapping(bytes4 => bool)) public allowedSelectors;
 
-    /// @notice Stores whether eth transfers are allowed to the given target address
-    mapping(address => bool) public allowedEthTransfers;
+    /// @notice Stores whether native transfers are allowed to the given target address
+    mapping(address => bool) public allowedNativeTransfers;
 
     bytes32 public constant MANAGE_SELECTORS_PERMISSION_ID = keccak256("MANAGE_SELECTORS_PERMISSION");
 
@@ -35,10 +35,10 @@ contract ExecuteSelectorCondition is ERC165, IPermissionCondition, DaoAuthorizab
     event SelectorAllowed(bytes4 selector, address where);
     /// @notice Emitted when a selector is disallowed.
     event SelectorDisallowed(bytes4 selector, address where);
-    /// @notice Emitted when eth transfers are allowed to the given address
-    event EthTransfersAllowed(address where);
-    /// @notice Emitted when eth transfers are disallowed to the given address
-    event EthTransfersDisallowed(address where);
+    /// @notice Emitted when native transfers are allowed to the given address
+    event NativeTransfersAllowed(address where);
+    /// @notice Emitted when native transfers are disallowed to the given address
+    event NativeTransfersDisallowed(address where);
 
     /// @notice Configures a new instance with the given set of allowed selectors
     /// @param _dao The address of the DAO where the contract should read the permissions from
@@ -63,18 +63,18 @@ contract ExecuteSelectorCondition is ERC165, IPermissionCondition, DaoAuthorizab
 
     /// @notice Allows actions with a non-zero `value` to pass for the given target address
     /// @param _where The target address
-    function allowEthTransfers(address _where) public virtual auth(MANAGE_SELECTORS_PERMISSION_ID) {
-        if (allowedEthTransfers[_where]) return;
+    function allowNativeTransfers(address _where) public virtual auth(MANAGE_SELECTORS_PERMISSION_ID) {
+        if (allowedNativeTransfers[_where]) return;
 
-        _allowEthTransfers(_where);
+        _allowNativeTransfers(_where);
     }
 
     /// @notice Restricts actions with a non-zero `value` for the given target address
     /// @param _where The target address
-    function disallowEthTransfers(address _where) public virtual auth(MANAGE_SELECTORS_PERMISSION_ID) {
-        if (!allowedEthTransfers[_where]) return;
+    function disallowNativeTransfers(address _where) public virtual auth(MANAGE_SELECTORS_PERMISSION_ID) {
+        if (!allowedNativeTransfers[_where]) return;
 
-        _disallowEthTransfers(_where);
+        _disallowNativeTransfers(_where);
     }
 
     /// @inheritdoc IPermissionCondition
@@ -96,12 +96,12 @@ contract ExecuteSelectorCondition is ERC165, IPermissionCondition, DaoAuthorizab
         for (uint256 i; i < _actions.length; i++) {
             if (_actions[i].data.length == 0) {
                 if (_actions[i].value == 0) return false;
-                else if (!allowedEthTransfers[_actions[i].to]) return false;
+                else if (!allowedNativeTransfers[_actions[i].to]) return false;
             } else if (_actions[i].data.length < 4) {
                 return false;
             } else if (!allowedSelectors[_actions[i].to][getSelector(_actions[i].data)]) {
                 return false;
-            } else if (_actions[i].value != 0 && !allowedEthTransfers[_actions[i].to]) {
+            } else if (_actions[i].value != 0 && !allowedNativeTransfers[_actions[i].to]) {
                 return false;
             }
         }
@@ -139,13 +139,13 @@ contract ExecuteSelectorCondition is ERC165, IPermissionCondition, DaoAuthorizab
         }
     }
 
-    function _allowEthTransfers(address _where) internal virtual {
-        allowedEthTransfers[_where] = true;
-        emit EthTransfersAllowed(_where);
+    function _allowNativeTransfers(address _where) internal virtual {
+        allowedNativeTransfers[_where] = true;
+        emit NativeTransfersAllowed(_where);
     }
 
-    function _disallowEthTransfers(address _where) internal virtual {
-        allowedEthTransfers[_where] = false;
-        emit EthTransfersDisallowed(_where);
+    function _disallowNativeTransfers(address _where) internal virtual {
+        allowedNativeTransfers[_where] = false;
+        emit NativeTransfersDisallowed(_where);
     }
 }

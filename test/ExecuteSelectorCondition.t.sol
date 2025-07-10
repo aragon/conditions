@@ -31,8 +31,8 @@ contract ExecuteSelectorConditionTest is AragonTest {
     // Events
     event SelectorAllowed(bytes4 selector, address where);
     event SelectorDisallowed(bytes4 selector, address where);
-    event EthTransfersAllowed(address where);
-    event EthTransfersDisallowed(address where);
+    event NativeTransfersAllowed(address where);
+    event NativeTransfersDisallowed(address where);
 
     bytes4 internal constant DUMMY_SELECTOR_1 = 0x11111111;
     bytes4 internal constant DUMMY_SELECTOR_2 = 0x22222222;
@@ -195,7 +195,7 @@ contract ExecuteSelectorConditionTest is AragonTest {
         _;
     }
 
-    function test_GivenTheSelectorAndETHTransfersAreAllowedForTheTarget()
+    function test_GivenTheSelectorAndNativeTransfersAreAllowedForTheTarget()
         external
         whenCallingIsGranted
         givenTheCalldataIsForIExecutorexecute
@@ -208,7 +208,7 @@ contract ExecuteSelectorConditionTest is AragonTest {
         entry.selectors = new bytes4[](1);
         entry.selectors[0] = DAO.setMetadata.selector;
         executeSelectorCondition.allowSelectors(entry);
-        executeSelectorCondition.allowEthTransfers(address(dao));
+        executeSelectorCondition.allowNativeTransfers(address(dao));
 
         Action[] memory actions = new Action[](1);
         actions[0].to = address(dao);
@@ -219,7 +219,7 @@ contract ExecuteSelectorConditionTest is AragonTest {
         assertTrue(executeSelectorCondition.isGranted(address(0), address(0), bytes32(0), calldataPayload));
     }
 
-    function test_GivenTheSelectorIsAllowedButETHTransfersAreNot()
+    function test_GivenTheSelectorIsAllowedButNativeTransfersAreNot()
         external
         whenCallingIsGranted
         givenTheCalldataIsForIExecutorexecute
@@ -232,7 +232,7 @@ contract ExecuteSelectorConditionTest is AragonTest {
         entry.selectors = new bytes4[](1);
         entry.selectors[0] = DAO.setMetadata.selector;
         executeSelectorCondition.allowSelectors(entry);
-        // Note: ETH transfers are not allowed
+        // Note: Native transfers are not allowed
 
         Action[] memory actions = new Action[](1);
         actions[0].to = address(dao);
@@ -243,19 +243,19 @@ contract ExecuteSelectorConditionTest is AragonTest {
         assertFalse(executeSelectorCondition.isGranted(address(0), address(0), bytes32(0), calldataPayload));
     }
 
-    modifier givenASingleActionIsAPureETHTransferCalldataIsEmpty() {
+    modifier givenASingleActionIsAPureNativeTransferCalldataIsEmpty() {
         _;
     }
 
-    function test_GivenValueIsNonZeroAndETHTransfersAreAllowedForTheTarget()
+    function test_GivenValueIsNonZeroAndNativeTransfersAreAllowedForTheTarget()
         external
         whenCallingIsGranted
         givenTheCalldataIsForIExecutorexecute
-        givenASingleActionIsAPureETHTransferCalldataIsEmpty
+        givenASingleActionIsAPureNativeTransferCalldataIsEmpty
     {
         // It should return true
         dao.grant(address(executeSelectorCondition), alice, MANAGE_SELECTORS_PERMISSION_ID);
-        executeSelectorCondition.allowEthTransfers(carol);
+        executeSelectorCondition.allowNativeTransfers(carol);
 
         Action[] memory actions = new Action[](1);
         actions[0].to = carol;
@@ -266,12 +266,12 @@ contract ExecuteSelectorConditionTest is AragonTest {
         assertTrue(executeSelectorCondition.isGranted(address(0), address(0), bytes32(0), calldataPayload));
     }
 
-    function test_GivenValueIsNonZeroAndETHTransfersAreNotAllowedForTheTarget()
+    function test_GivenValueIsNonZeroAndNativeTransfersAreNotAllowedForTheTarget()
         external
         view
         whenCallingIsGranted
         givenTheCalldataIsForIExecutorexecute
-        givenASingleActionIsAPureETHTransferCalldataIsEmpty
+        givenASingleActionIsAPureNativeTransferCalldataIsEmpty
     {
         // It should return false
         Action[] memory actions = new Action[](1);
@@ -287,11 +287,11 @@ contract ExecuteSelectorConditionTest is AragonTest {
         external
         whenCallingIsGranted
         givenTheCalldataIsForIExecutorexecute
-        givenASingleActionIsAPureETHTransferCalldataIsEmpty
+        givenASingleActionIsAPureNativeTransferCalldataIsEmpty
     {
         // It should return false
         dao.grant(address(executeSelectorCondition), alice, MANAGE_SELECTORS_PERMISSION_ID);
-        executeSelectorCondition.allowEthTransfers(carol);
+        executeSelectorCondition.allowNativeTransfers(carol);
 
         Action[] memory actions = new Action[](1);
         actions[0].to = carol;
@@ -319,19 +319,19 @@ contract ExecuteSelectorConditionTest is AragonTest {
         entry.selectors = new bytes4[](1);
         entry.selectors[0] = DAO.setMetadata.selector;
         executeSelectorCondition.allowSelectors(entry);
-        executeSelectorCondition.allowEthTransfers(carol);
-        executeSelectorCondition.allowEthTransfers(address(dao)); // Allow ETH transfer for action 2
+        executeSelectorCondition.allowNativeTransfers(carol);
+        executeSelectorCondition.allowNativeTransfers(address(dao)); // Allow native transfer for action 2
 
         Action[] memory actions = new Action[](3);
         // Action 0: Function call, no value, allowed selector
         actions[0].to = address(dao);
         actions[0].value = 0;
         actions[0].data = abi.encodeCall(DAO.setMetadata, ("meta"));
-        // Action 1: Pure ETH transfer, allowed
+        // Action 1: Pure native transfer, allowed
         actions[1].to = carol;
         actions[1].value = 1 ether;
         actions[1].data = "";
-        // Action 2: Function call, with value, allowed selector and ETH transfer
+        // Action 2: Function call, with value, allowed selector and native transfer
         actions[2].to = address(dao);
         actions[2].value = 0.5 ether;
         actions[2].data = abi.encodeCall(DAO.setMetadata, ("meta2"));
@@ -340,7 +340,7 @@ contract ExecuteSelectorConditionTest is AragonTest {
         assertTrue(executeSelectorCondition.isGranted(address(0), address(0), bytes32(0), calldataPayload));
     }
 
-    function test_GivenAnAllowedETHTransferIsFollowedByADisallowedFunctionCall()
+    function test_GivenAnAllowedNativeTransferIsFollowedByADisallowedFunctionCall()
         external
         whenCallingIsGranted
         givenTheCalldataIsForIExecutorexecute
@@ -348,11 +348,11 @@ contract ExecuteSelectorConditionTest is AragonTest {
     {
         // It should correctly return false
         dao.grant(address(executeSelectorCondition), alice, MANAGE_SELECTORS_PERMISSION_ID);
-        executeSelectorCondition.allowEthTransfers(carol);
+        executeSelectorCondition.allowNativeTransfers(carol);
         // Note: DAO.setMetadata.selector is NOT allowed
 
         Action[] memory actions = new Action[](2);
-        // Action 0: Pure ETH transfer, allowed
+        // Action 0: Pure native transfer, allowed
         actions[0].to = carol;
         actions[0].value = 1 ether;
         actions[0].data = "";
@@ -560,13 +560,13 @@ contract ExecuteSelectorConditionTest is AragonTest {
         assertFalse(executeSelectorCondition.allowedSelectors(address(dao), DUMMY_SELECTOR_2));
     }
 
-    modifier whenCallingAllowEthTransfers() {
+    modifier whenCallingAllowNativeTransfers() {
         _;
     }
 
     function test_RevertGiven_TheCallerDoesNotHaveTheMANAGESELECTORSPERMISSIONID3()
         external
-        whenCallingAllowEthTransfers
+        whenCallingAllowNativeTransfers
     {
         // It should revert
         vm.startPrank(bob);
@@ -579,7 +579,7 @@ contract ExecuteSelectorConditionTest is AragonTest {
                 MANAGE_SELECTORS_PERMISSION_ID
             )
         );
-        executeSelectorCondition.allowEthTransfers(carol);
+        executeSelectorCondition.allowNativeTransfers(carol);
     }
 
     modifier givenTheCallerHasTheMANAGESELECTORSPERMISSIONID3() {
@@ -588,41 +588,41 @@ contract ExecuteSelectorConditionTest is AragonTest {
         _;
     }
 
-    function test_GivenETHTransfersAreNotYetAllowedForTheTargetAddress()
+    function test_GivenNativeTransfersAreNotYetAllowedForTheTargetAddress()
         external
-        whenCallingAllowEthTransfers
+        whenCallingAllowNativeTransfers
         givenTheCallerHasTheMANAGESELECTORSPERMISSIONID3
     {
-        // It should succeed, update state, and emit an EthTransfersAllowed event
-        assertFalse(executeSelectorCondition.allowedEthTransfers(carol));
+        // It should succeed, update state, and emit an NativeTransfersAllowed event
+        assertFalse(executeSelectorCondition.allowedNativeTransfers(carol));
 
         vm.expectEmit(true, true, true, true);
-        emit EthTransfersAllowed(carol);
-        executeSelectorCondition.allowEthTransfers(carol);
+        emit NativeTransfersAllowed(carol);
+        executeSelectorCondition.allowNativeTransfers(carol);
 
-        assertTrue(executeSelectorCondition.allowedEthTransfers(carol));
+        assertTrue(executeSelectorCondition.allowedNativeTransfers(carol));
     }
 
-    function test_GivenETHTransfersAreAlreadyAllowedForTheTargetAddress()
+    function test_GivenNativeTransfersAreAlreadyAllowedForTheTargetAddress()
         external
-        whenCallingAllowEthTransfers
+        whenCallingAllowNativeTransfers
         givenTheCallerHasTheMANAGESELECTORSPERMISSIONID3
     {
         // It should succeed silently without emitting an event or changing state
-        executeSelectorCondition.allowEthTransfers(carol); // Allow first time
-        assertTrue(executeSelectorCondition.allowedEthTransfers(carol));
+        executeSelectorCondition.allowNativeTransfers(carol); // Allow first time
+        assertTrue(executeSelectorCondition.allowedNativeTransfers(carol));
 
-        executeSelectorCondition.allowEthTransfers(carol); // Allow second time
-        assertTrue(executeSelectorCondition.allowedEthTransfers(carol));
+        executeSelectorCondition.allowNativeTransfers(carol); // Allow second time
+        assertTrue(executeSelectorCondition.allowedNativeTransfers(carol));
     }
 
-    modifier whenCallingDisallowEthTransfers() {
+    modifier whenCallingDisallowNativeTransfers() {
         _;
     }
 
     function test_RevertGiven_TheCallerDoesNotHaveTheMANAGESELECTORSPERMISSIONID4()
         external
-        whenCallingDisallowEthTransfers
+        whenCallingDisallowNativeTransfers
     {
         // It should revert
         vm.startPrank(bob);
@@ -635,7 +635,7 @@ contract ExecuteSelectorConditionTest is AragonTest {
                 MANAGE_SELECTORS_PERMISSION_ID
             )
         );
-        executeSelectorCondition.disallowEthTransfers(carol);
+        executeSelectorCondition.disallowNativeTransfers(carol);
     }
 
     modifier givenTheCallerHasTheMANAGESELECTORSPERMISSIONID4() {
@@ -644,32 +644,32 @@ contract ExecuteSelectorConditionTest is AragonTest {
         _;
     }
 
-    function test_GivenETHTransfersAreCurrentlyAllowedForTheTargetAddress()
+    function test_GivenNativeTransfersAreCurrentlyAllowedForTheTargetAddress()
         external
-        whenCallingDisallowEthTransfers
+        whenCallingDisallowNativeTransfers
         givenTheCallerHasTheMANAGESELECTORSPERMISSIONID4
     {
-        // It should succeed, update state, and emit an EthTransfersDisallowed event
-        executeSelectorCondition.allowEthTransfers(carol);
-        assertTrue(executeSelectorCondition.allowedEthTransfers(carol));
+        // It should succeed, update state, and emit an NativeTransfersDisallowed event
+        executeSelectorCondition.allowNativeTransfers(carol);
+        assertTrue(executeSelectorCondition.allowedNativeTransfers(carol));
 
         vm.expectEmit(true, true, true, true);
-        emit EthTransfersDisallowed(carol);
-        executeSelectorCondition.disallowEthTransfers(carol);
+        emit NativeTransfersDisallowed(carol);
+        executeSelectorCondition.disallowNativeTransfers(carol);
 
-        assertFalse(executeSelectorCondition.allowedEthTransfers(carol));
+        assertFalse(executeSelectorCondition.allowedNativeTransfers(carol));
     }
 
-    function test_GivenETHTransfersAreNotCurrentlyAllowedForTheTargetAddress()
+    function test_GivenNativeTransfersAreNotCurrentlyAllowedForTheTargetAddress()
         external
-        whenCallingDisallowEthTransfers
+        whenCallingDisallowNativeTransfers
         givenTheCallerHasTheMANAGESELECTORSPERMISSIONID4
     {
         // It should succeed silently without emitting an event or changing state
-        assertFalse(executeSelectorCondition.allowedEthTransfers(carol));
+        assertFalse(executeSelectorCondition.allowedNativeTransfers(carol));
 
-        executeSelectorCondition.disallowEthTransfers(carol);
-        assertFalse(executeSelectorCondition.allowedEthTransfers(carol));
+        executeSelectorCondition.disallowNativeTransfers(carol);
+        assertFalse(executeSelectorCondition.allowedNativeTransfers(carol));
     }
 
     function test_WhenCallingSupportsInterface() external view {

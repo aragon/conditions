@@ -7,16 +7,24 @@ import {SelectorCondition} from "../SelectorCondition.sol";
 
 /// @title ConditionFactory
 /// @author AragonX 2025
-/// @notice A factory used to deploy new instances of the Condition contract
+/// @notice A factory used to deploy new condition instances
 contract ConditionFactory {
+    event ExecuteSelectorConditionDeployed(ExecuteSelectorCondition newContract);
+    event SelectorConditionDeployed(SelectorCondition newContract);
+
     function deployExecuteSelectorCondition(IDAO _dao, ExecuteSelectorCondition.SelectorTarget[] memory _initialEntries)
         public
-        returns (ExecuteSelectorCondition)
+        returns (ExecuteSelectorCondition newContract)
     {
-        return new ExecuteSelectorCondition(_dao, _initialEntries);
+        newContract = new ExecuteSelectorCondition(_dao, _initialEntries);
+        emit ExecuteSelectorConditionDeployed(newContract);
     }
 
-    function deploySelectorCondition(IDAO _dao, bytes4[] memory _initialSelectors) public returns (SelectorCondition) {
-        return new SelectorCondition(_dao, _initialSelectors);
+    function deploySelectorCondition(IDAO _dao, bytes4[] memory _initialSelectors)
+        public
+        returns (SelectorCondition newContract)
+    {
+        newContract = new SelectorCondition(_dao, _initialSelectors);
+        emit SelectorConditionDeployed(newContract);
     }
 }

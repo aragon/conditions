@@ -18,7 +18,6 @@ contract ConditionFactory {
     {
         newContract = new ExecuteSelectorCondition(_dao, _initialEntries);
         emit ExecuteSelectorConditionDeployed(newContract);
-        return newContract;
     }
 
     function deploySelectorCondition(IDAO _dao, bytes4[] memory _initialSelectors)
@@ -27,6 +26,5 @@ contract ConditionFactory {
     {
         newContract = new SelectorCondition(_dao, _initialSelectors);
         emit SelectorConditionDeployed(newContract);
-        return newContract;
     }
 }

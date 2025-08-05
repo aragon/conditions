@@ -118,7 +118,7 @@ verify_contract() {
       verify_args+=(--verifier $EXPLORER_TYPE)
       verify_args+=(--verifier-url "$EXPLORER_API_URL")
       if [[ -n "$EXPLORER_API_KEY" ]]; then
-        verify_args+=(--etherscan-api-key \"$EXPLORER_API_KEY\")
+        verify_args+=(--etherscan-api-key $EXPLORER_API_KEY)
       fi
       ;;
     blockscout)

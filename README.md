@@ -82,16 +82,21 @@ Check the available make targets to simulate and deploy the smart contracts:
 - [ ] I am using the latest official docker engine, running a Debian Linux (stable) image
   - [ ] I have run `docker run --rm -it -v .:/deployment debian:bookworm-slim`
   - [ ] I have run `apt update && apt install -y make curl git vim neovim bc`
-  - [ ] I have run `curl -L https://foundry.paradigm.xyz | bash`
-  - [ ] I have run `source /root/.bashrc && foundryup --version stable`
+  - On **standard EVM networks**:
+    - [ ] I have run `curl -L https://foundry.paradigm.xyz | bash`
+    - [ ] I have run `source /root/.bashrc`
+    - [ ] I have run `foundryup`
+  - On **ZkSync networks**:
+    - [ ] I have run `curl -L https://raw.githubusercontent.com/matter-labs/foundry-zksync/main/install-foundry-zksync | bash`
+    - [ ] I have run `source /root/.bashrc`
+    - [ ] I have run `foundryup-zksync`
   - [ ] I have run `cd /deployment`
-  - [ ] I have run `cp .env.example .env`
-  - [ ] I have edited and printed the contents of `.env` to the screen
+  - [ ] I have run `cp .env.example .env` (if not previously done)
   - [ ] I have run `make init`
 - [ ] I am opening an editor on the `/deployment` folder, within the Docker container
 - [ ] The `.env` file contains the correct parameters for the deployment
   - [ ] I have created a brand new burner wallet with `cast wallet new` and copied the private key to `DEPLOYMENT_PRIVATE_KEY` within `.env`
-  - [ ] I have reviewed the target network and RPC URL
+  - [ ] I have reviewed the target network and `RPC_URL`
 - [ ] All the tests run clean (`make test`)
 - [ ] My deployment wallet is a newly created account, ready for safe production deploys.
 - My computer:
@@ -111,10 +116,12 @@ Check the available make targets to simulate and deploy the smart contracts:
 ### Post deployment checklist
 
 - [ ] The deployment process completed with no errors
+- [ ] The output of the latest `deployment-*.log` file corresponds to the console output
+- [ ] I have copied the `== Logs ==` section into [DEPLOYMENTS.md](./DEPLOYMENTS.md)
+- [ ] I have uploaded the log file to a remote place
 - [ ] The factory contract was deployed by the deployment address
 - [ ] All the project's smart contracts are correctly verified on the reference block explorer of the target network.
   -  [ ] This also includes contracts that aren't explicitly deployed (deployed on demand)
-- [ ] The output of the latest `deployment-*.log` file corresponds to the console output
 - [ ] I have transferred the remaining funds of the deployment wallet to the address that originally funded it
   - `make refund`
 

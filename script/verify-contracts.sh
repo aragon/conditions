@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # This script is a fallback for cases where multiple block explorers need to be targeted.
-# It reads and verifies all contracts from the latest 'DeployPluginVersion.s.sol' script run
+# It reads and verifies all contracts from the latest 'Deploy.s.sol' script run
 # on a single, specified block explorer.
 # It reads deployment details from the corresponding run-latest.json broadcast file.
 
@@ -19,7 +19,7 @@
 set -uo pipefail # Exit on unset variables and on pipeline errors
 
 # Constants
-DEPLOY_SCRIPT_FILENAME="DeployPluginVersion.s.sol"
+DEPLOY_SCRIPT_FILENAME="Deploy.s.sol"
 
 # Functions
 
@@ -111,7 +111,7 @@ verify_contract() {
 
   case "$EXPLORER_TYPE" in
     etherscan | custom)
-      if [[ -z "$EXPLORER_API_URL" ]]; then
+      if [[ -z $EXPLORER_API_URL ]]; then
         echo "Error: API URL is required for etherscan type."
         return 1 # Indicate failure for this specific verification
       fi

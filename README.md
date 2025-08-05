@@ -82,27 +82,20 @@ Check the available make targets to simulate and deploy the smart contracts:
   - [ ] I have created a brand new burner wallet with `cast wallet new` and copied the private key to `DEPLOYMENT_PRIVATE_KEY` within `.env`
   - [ ] I have reviewed the target network and RPC URL
 - [ ] All the tests run clean (`make test`)
-- **Target test network**
-  - [ ] I have run a preview deployment on the testnet
-    - `make predeploy-testnet`
-  - [ ] I have deployed my contracts successfully to the target testnet
-    - `make deploy-testnet`
-  - [ ] I have tested that these contracts work successfully
-- **Target production network**
 - [ ] My deployment wallet is a newly created account, ready for safe production deploys.
 - My computer:
   - [ ] Is running in a safe location and using a trusted network
   - [ ] It exposes no services or ports
   - [ ] The wifi or wired network in use does not expose any ports to a WAN
 - [ ] I have previewed my deploy without any errors
-  - `make predeploy-prodnet`
+  - `make predeploy`
 - [ ] The deployment wallet has sufficient native token for gas
   - At least, 15% more than the estimated simulation
 - [ ] `make test` still run clean
 - [ ] I have run `git status` and it reports no local changes
 - [ ] The current local git branch (`main`) corresponds to its counterpart on `origin`
   - [ ] I confirm that the rest of members of the ceremony pulled the last commit of my branch and reported the same commit hash as my output for `git log -n 1`
-- [ ] I have initiated the production deployment with `make deploy-prodnet`
+- [ ] I have initiated the production deployment with `make deploy`
 
 ### Post deployment checklist
 

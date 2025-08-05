@@ -25,23 +25,33 @@ The `Makefile` is the target launcher of the project. It's the recommended way t
 $ make
 Available targets:
 
-- make init       Check the dependencies and prompt to install if needed
-- make clean      Clean the build artifacts
+- make help               Display the available targets
 
-- make test            Run unit tests, locally
-- make test-coverage   Generate an HTML coverage report under ./report
+- make init               Check the dependencies and prompt to install if needed
+- make clean              Clean the build artifacts
 
-- make sync-tests       Scaffold or sync tree files into solidity tests
-- make check-tests      Checks if solidity files are out of sync
-- make markdown-tests   Generates a markdown file with the test definitions rendered as a tree
+- make test               Run unit tests, locally
+- make test-coverage      Generate an HTML coverage report under ./report
 
-- make predeploy-testnet        Simulate a deployment to the testnet
-- make predeploy-prodnet        Simulate a deployment to the production network
+- make sync-tests         Scaffold or sync tree files into solidity tests
+- make check-tests        Checks if solidity files are out of sync
+- make markdown-tests     Generates a markdown file with the test definitions rendered as a tree
 
-- make deploy-testnet        Deploy to the testnet and verify
-- make deploy-prodnet        Deploy to the production network and verify
+Deployment targets:
 
-- make refund   Refund the remaining balance left on the deployment account
+- make predeploy          Simulate a factory deployment
+- make deploy             Deploy the factory and verify the source code
+
+- make precreate          Simulate running Create.s.sol
+- make create             Run Create.s.sol to create new condition instances
+
+Verification:
+
+- make verify-etherscan   Verify the last deployment on an Etherscan (compatible) explorer
+- make verify-blockscout  Verify the last deployment on BlockScout
+- make verify-sourcify    Verify the last deployment on Sourcify
+
+- make refund             Refund the remaining balance left on the deployment account
 ```
 
 Run `make init`:

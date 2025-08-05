@@ -85,8 +85,9 @@ Check the available make targets to simulate and deploy the smart contracts:
   - [ ] I have run `curl -L https://foundry.paradigm.xyz | bash`
   - [ ] I have run `source /root/.bashrc && foundryup --version stable`
   - [ ] I have run `cd /deployment`
+  - [ ] I have run `cp .env.example .env`
+  - [ ] I have edited and printed the contents of `.env` to the screen
   - [ ] I have run `make init`
-  - [ ] I have printed the contents of `.env` and `.env.test` on the screen
 - [ ] I am opening an editor on the `/deployment` folder, within the Docker container
 - [ ] The `.env` file contains the correct parameters for the deployment
   - [ ] I have created a brand new burner wallet with `cast wallet new` and copied the private key to `DEPLOYMENT_PRIVATE_KEY` within `.env`

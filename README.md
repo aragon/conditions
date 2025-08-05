@@ -83,7 +83,7 @@ Check the available make targets to simulate and deploy the smart contracts:
   - [ ] I have run `docker run --rm -it -v .:/deployment debian:bookworm-slim`
   - [ ] I have run `apt update && apt install -y make curl git vim neovim bc`
   - [ ] I have run `curl -L https://foundry.paradigm.xyz | bash`
-  - [ ] I have run `source /root/.bashrc && foundryup`
+  - [ ] I have run `source /root/.bashrc && foundryup --version stable`
   - [ ] I have run `cd /deployment`
   - [ ] I have run `make init`
   - [ ] I have printed the contents of `.env` and `.env.test` on the screen

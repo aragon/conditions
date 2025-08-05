@@ -5,22 +5,17 @@ include .env
 
 SHELL:=/bin/bash
 
-# RULE SPECIFIC ENV VARS [optional]
-
-# Override the verifier and block explorer parameters (network dependent)
-%-testnet: export ETHERSCAN_API_KEY_PARAM = --etherscan-api-key $(ETHERSCAN_API_KEY)
-%-prodnet: export ETHERSCAN_API_KEY_PARAM = --etherscan-api-key $(ETHERSCAN_API_KEY)
-# %-testnet: export VERIFIER_TYPE_PARAM = --verifier blockscout
-# %-testnet: export VERIFIER_URL_PARAM = --verifier-url "https://server/api\?"
-
 # CONSTANTS
 
-SOLIDITY_VERSION=0.8.22
+SOLC_VERSION := $(shell cat foundry.toml | grep solc | cut -d= -f2 | xargs echo || echo "0.8.23")
 TEST_TREE_MARKDOWN=TEST_TREE.md
 MAKEFILE=Makefile
 DEPLOY_SCRIPT:=script/Deploy.s.sol:Deploy
 CREATE_SCRIPT:=script/Create.s.sol:Create
+VERIFY_CONTRACTS_SCRIPT := script/verify-contracts.sh
+SUPPORTED_VERIFIERS := etherscan blockscout sourcify routescan-mainnet routescan-testnet
 MAKE_TEST_TREE_CMD=deno run ./test/script/make-test-tree.ts
+LOGS_FOLDER := ./logs
 VERBOSITY:=-vvv
 
 TEST_COVERAGE_SRC_FILES:=$(wildcard test/*.sol test/**/*.sol src/*.sol src/**/*.sol src/libs/ProxyLib.sol)
@@ -28,18 +23,66 @@ TEST_SOURCE_FILES = $(wildcard test/*.t.yaml test/integration/*.t.yaml)
 TEST_TREE_FILES = $(TEST_SOURCE_FILES:.t.yaml=.tree)
 DEPLOYMENT_ADDRESS = $(shell cast wallet address --private-key $(DEPLOYMENT_PRIVATE_KEY))
 
+# Strip the quotes
+NETWORK_NAME:=$(strip $(subst ',, $(subst ",,$(NETWORK_NAME))))
+CHAIN_ID:=$(strip $(subst ',, $(subst ",,$(CHAIN_ID))))
+VERIFIER:=$(strip $(subst ',, $(subst ",,$(VERIFIER))))
+
+DEPLOYMENT_LOG_FILE=deployment-$(NETWORK_NAME)-$(shell date +"%y-%m-%d-%H-%M").log
+CREATION_LOG_FILE=creation-$(NETWORK_NAME)-$(shell date +"%y-%m-%d-%H-%M").log
+
+# Check values
+
+ifeq ($(filter $(VERIFIER),$(SUPPORTED_VERIFIERS)),)
+  $(error Unknown verifier: $(VERIFIER). It must be one of: $(SUPPORTED_VERIFIERS))
+endif
+
+# Conditional assignments
+
+ifeq ($(VERIFIER), etherscan)
+	# VERIFIER_URL := https://api.etherscan.io/api
+	VERIFIER_API_KEY := $(ETHERSCAN_API_KEY)
+	VERIFIER_PARAMS := --verifier $(VERIFIER) --etherscan-api-key $(ETHERSCAN_API_KEY)
+endif
+
+ifeq ($(VERIFIER), blockscout)
+	VERIFIER_URL := https://$(BLOCKSCOUT_HOST_NAME)/api\?
+	VERIFIER_API_KEY := ""
+	VERIFIER_PARAMS = --verifier $(VERIFIER) --verifier-url "$(VERIFIER_URL)"
+endif
+
+# ifeq ($(VERIFIER), sourcify)
+# endif
+
+ifneq ($(filter $(VERIFIER), routescan-mainnet routescan-testnet),)
+	ifeq ($(VERIFIER), routescan-mainnet)
+		VERIFIER_URL := https://api.routescan.io/v2/network/mainnet/evm/$(CHAIN_ID)/etherscan
+	else
+		VERIFIER_URL := https://api.routescan.io/v2/network/testnet/evm/$(CHAIN_ID)/etherscan
+	endif
+
+	VERIFIER := custom
+	VERIFIER_API_KEY := "verifyContract"
+	VERIFIER_PARAMS = --verifier $(VERIFIER) --verifier-url '$(VERIFIER_URL)' --etherscan-api-key $(VERIFIER_API_KEY)
+endif
+
+# When invoked like `make deploy slow=true`
+ifeq ($(slow),true)
+	SLOW_FLAG := --slow
+endif
+
 # TARGETS
 
 .PHONY: help
-help: ## Display the current message
-	@echo "Available targets:"
+help: ## Display the available targets
+	@echo -e "Available targets:\n"
 	@cat Makefile | while IFS= read -r line; do \
 	   if [[ "$$line" == "##" ]]; then \
 			echo "" ; \
 		elif [[ "$$line" =~ ^##\ (.*)$$ ]]; then \
-			echo -e "\n$${BASH_REMATCH[1]}\n" ; \
+			printf "\n$${BASH_REMATCH[1]}\n\n" ; \
 		elif [[ "$$line" =~ ^([^:]+):(.*)##\ (.*)$$ ]]; then \
-			echo -e "- make $${BASH_REMATCH[1]}    \t$${BASH_REMATCH[3]}" ; \
+			printf "%s %-*s %s\n" "- make" 18 "$${BASH_REMATCH[1]}" "$${BASH_REMATCH[3]}" ; \
 		fi ; \
 	done
 
@@ -62,7 +105,9 @@ clean: ## Clean the build artifacts
 
 ##
 
+# Run tests faster, locally
 test: export RPC_URL=""
+test: export ETHERSCAN_API_KEY=
 test-coverage: export RPC_URL=""
 
 .PHONY: test
@@ -89,7 +134,7 @@ sync-tests: $(TEST_TREE_FILES) ## Scaffold or sync tree files into solidity test
 	@for file in $^; do \
 		if [ ! -f $${file%.tree}.t.sol ]; then \
 			echo "[Scaffold]   $${file%.tree}.t.sol" ; \
-			bulloak scaffold -s $(SOLIDITY_VERSION) --vm-skip -w $$file ; \
+			bulloak scaffold -s $(SOLC_VERSION) --vm-skip -w $$file ; \
 		else \
 			echo "[Sync file]  $${file%.tree}.t.sol" ; \
 			bulloak check --fix $$file ; \
@@ -135,77 +180,66 @@ $(TEST_TREE_FILES): $(TEST_SOURCE_FILES)
 
 ## Deployment targets:
 
-%-testnet: export RPC_URL = $(TESTNET_RPC_URL)
-%-testnet: export NETWORK = $(TESTNET_NETWORK)
-%-prodnet: export RPC_URL = $(PRODNET_RPC_URL)
-%-prodnet: export NETWORK = $(PRODNET_NETWORK)
-
-predeploy-testnet: predeploy-factory ## Simulate a factory deployment to the testnet
-predeploy-prodnet: predeploy-factory ## Simulate a factory deployment to the production network
-
-deploy-testnet: export DEPLOYMENT_LOG_FILE=deployment-$(patsubst "%",%,$(TESTNET_NETWORK))-$(shell date +"%y-%m-%d-%H-%M").log
-deploy-prodnet: export DEPLOYMENT_LOG_FILE=deployment-$(patsubst "%",%,$(PRODNET_NETWORK))-$(shell date +"%y-%m-%d-%H-%M").log
-create-testnet: export CREATE_LOG_FILE=creation-$(patsubst "%",%,$(TESTNET_NETWORK))-$(shell date +"%y-%m-%d-%H-%M").log
-create-prodnet: export CREATE_LOG_FILE=creation-$(patsubst "%",%,$(PRODNET_NETWORK))-$(shell date +"%y-%m-%d-%H-%M").log
-
-deploy-testnet: deploy-factory ## Deploy the factory to the testnet and verify
-deploy-prodnet: deploy-factory ## Deploy the factory to the production network and verify
-
-.PHONY: predeploy-factory
-predeploy-factory:
+.PHONY: predeploy
+predeploy:  ## Simulate a factory deployment
 	@echo "Simulating the deployment"
 	forge script $(DEPLOY_SCRIPT) \
-		--chain $(NETWORK) \
 		--rpc-url $(RPC_URL) \
 		$(VERBOSITY)
 
-.PHONY: deploy-factory
-deploy-factory: test
+.PHONY: deploy
+deploy: test  ## Deploy the factory and verify the source code
 	@echo "Starting the deployment"
-	@mkdir -p logs/
+	@mkdir -p $(LOGS_FOLDER)/
 	forge script $(DEPLOY_SCRIPT) \
-		--chain $(NETWORK) \
 		--rpc-url $(RPC_URL) \
 		--retries 10 \
 		--delay 8 \
 		--broadcast \
+		$(SLOW_FLAG) \
 		--verify \
-		$(VERIFIER_TYPE_PARAM) \
-		$(VERIFIER_URL_PARAM) \
-		$(ETHERSCAN_API_KEY_PARAM) \
-		$(VERBOSITY) | tee logs/$(DEPLOYMENT_LOG_FILE)
+		$(VERIFIER_PARAMS) \
+		$(VERBOSITY) 2>&1 | tee -a $(LOGS_FOLDER)/$(DEPLOYMENT_LOG_FILE)
 
 ##
 
-precreate-testnet: precreate ## Simulate running Create.s.sol on the testnet
-precreate-prodnet: precreate ## Simulate running Create.s.sol on the prodnet
-
-create-testnet: create ## Run Create.s.sol on the testnet
-create-prodnet: create ## Run Create.s.sol on the prodnet
-
 .PHONY: precreate
-precreate:
+precreate: ## Simulate running Create.s.sol
 	@echo "Simulating condition creation"
 	forge script $(CREATE_SCRIPT) \
-		--chain $(NETWORK) \
 		--rpc-url $(RPC_URL) \
 		$(VERBOSITY)
 
 .PHONY: create
-create: test
+create: test ## Run Create.s.sol to create new condition instances
 	@echo "Creating condition(s)"
-	@mkdir -p logs/
+	@mkdir -p $(LOGS_FOLDER)/
 	forge script $(CREATE_SCRIPT) \
-		--chain $(NETWORK) \
 		--rpc-url $(RPC_URL) \
 		--retries 10 \
 		--delay 8 \
 		--broadcast \
+		$(SLOW_FLAG) \
 		--verify \
-		$(VERIFIER_TYPE_PARAM) \
-		$(VERIFIER_URL_PARAM) \
-		$(ETHERSCAN_API_KEY_PARAM) \
-		$(VERBOSITY) | tee logs/$(CREATE_LOG_FILE)
+		$(VERIFIER_PARAMS) \
+		$(VERBOSITY) 2>&1 | tee -a $(LOGS_FOLDER)/$(CREATION_LOG_FILE)
+
+## Verification:
+
+.PHONY: verify-etherscan
+verify-etherscan: broadcast/$(DEPLOYMENT_SCRIPT).s.sol/$(CHAIN_ID)/run-latest.json ## Verify the last deployment on an Etherscan (compatible) explorer
+	forge build
+	bash $(VERIFY_CONTRACTS_SCRIPT) $(CHAIN_ID) $(VERIFIER) $(VERIFIER_URL) $(VERIFIER_API_KEY)
+
+.PHONY: verify-blockscout
+verify-blockscout: broadcast/$(DEPLOYMENT_SCRIPT).s.sol/$(CHAIN_ID)/run-latest.json ## Verify the last deployment on BlockScout
+	forge build
+	bash $(VERIFY_CONTRACTS_SCRIPT) $(CHAIN_ID) $(VERIFIER) https://$(BLOCKSCOUT_HOST_NAME)/api $(VERIFIER_API_KEY)
+
+.PHONY: verify-sourcify
+verify-sourcify: broadcast/$(DEPLOYMENT_SCRIPT).s.sol/$(CHAIN_ID)/run-latest.json ## Verify the last deployment on Sourcify
+	forge build
+	bash $(VERIFY_CONTRACTS_SCRIPT) $(CHAIN_ID) $(VERIFIER) "" ""
 
 ##
 

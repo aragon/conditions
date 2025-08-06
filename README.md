@@ -70,10 +70,11 @@ The env.example file contains descriptions for all the initial settings. You don
 Check the available make targets to simulate and deploy the smart contracts:
 
 ```
-- make predeploy-testnet     Simulate a deployment to the defined testnet
-- make predeploy-prodnet     Simulate a deployment to the defined production network
-- make deploy-testnet        Deploy to the defined testnet network and verify
-- make deploy-prodnet        Deploy to the production network and verify
+- make predeploy          Simulate a factory deployment
+- make deploy             Deploy the factory and verify the source code
+
+- make precreate          Simulate running Create.s.sol
+- make create             Run Create.s.sol to create new condition instances
 ```
 
 ### Deployment Checklist

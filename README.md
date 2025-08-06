@@ -2,6 +2,16 @@
 
 This reposity contains a library of OSx conditions, meant to be used by any DAO wishing to guard contract functions by using common permission patterns.
 
+## Audit
+
+### July 2025
+
+**Halborn**: [audit report](./audits/halborn-audit.pdf)
+
+- Commit ID: [df9320ab](https://github.com/aragon/conditions/commit/df9320ab843a5e4e41c4d7476c22d01b54ca4504)
+- Started: July 15th, 2025
+- Finished: July 15th, 2025
+
 ## Overview
 
 - Execute Selector Condition: only allows a predefined set of function selectors to be invoked via `execute()`
@@ -70,10 +80,11 @@ The env.example file contains descriptions for all the initial settings. You don
 Check the available make targets to simulate and deploy the smart contracts:
 
 ```
-- make predeploy-testnet     Simulate a deployment to the defined testnet
-- make predeploy-prodnet     Simulate a deployment to the defined production network
-- make deploy-testnet        Deploy to the defined testnet network and verify
-- make deploy-prodnet        Deploy to the production network and verify
+- make predeploy          Simulate a factory deployment
+- make deploy             Deploy the factory and verify the source code
+
+- make precreate          Simulate running Create.s.sol
+- make create             Run Create.s.sol to create new condition instances
 ```
 
 ### Deployment Checklist

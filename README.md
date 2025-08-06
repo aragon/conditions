@@ -2,6 +2,16 @@
 
 This reposity contains a library of OSx conditions, meant to be used by any DAO wishing to guard contract functions by using common permission patterns.
 
+## Audit
+
+### July 2025
+
+**Halborn**: [audit report](./audits/halborn-audit.pdf)
+
+- Commit ID: [df9320ab](https://github.com/aragon/conditions/commit/df9320ab843a5e4e41c4d7476c22d01b54ca4504)
+- Started: July 15th, 2025
+- Finished: July 15th, 2025
+
 ## Overview
 
 - Execute Selector Condition: only allows a predefined set of function selectors to be invoked via `execute()`

@@ -25,23 +25,33 @@ The `Makefile` is the target launcher of the project. It's the recommended way t
 $ make
 Available targets:
 
-- make init       Check the dependencies and prompt to install if needed
-- make clean      Clean the build artifacts
+- make help               Display the available targets
 
-- make test            Run unit tests, locally
-- make test-coverage   Generate an HTML coverage report under ./report
+- make init               Check the dependencies and prompt to install if needed
+- make clean              Clean the build artifacts
 
-- make sync-tests       Scaffold or sync tree files into solidity tests
-- make check-tests      Checks if solidity files are out of sync
-- make markdown-tests   Generates a markdown file with the test definitions rendered as a tree
+- make test               Run unit tests, locally
+- make test-coverage      Generate an HTML coverage report under ./report
 
-- make predeploy-testnet        Simulate a deployment to the testnet
-- make predeploy-prodnet        Simulate a deployment to the production network
+- make sync-tests         Scaffold or sync tree files into solidity tests
+- make check-tests        Checks if solidity files are out of sync
+- make markdown-tests     Generates a markdown file with the test definitions rendered as a tree
 
-- make deploy-testnet        Deploy to the testnet and verify
-- make deploy-prodnet        Deploy to the production network and verify
+Deployment targets:
 
-- make refund   Refund the remaining balance left on the deployment account
+- make predeploy          Simulate a factory deployment
+- make deploy             Deploy the factory and verify the source code
+
+- make precreate          Simulate running Create.s.sol
+- make create             Run Create.s.sol to create new condition instances
+
+Verification:
+
+- make verify-etherscan   Verify the last deployment on an Etherscan (compatible) explorer
+- make verify-blockscout  Verify the last deployment on BlockScout
+- make verify-sourcify    Verify the last deployment on Sourcify
+
+- make refund             Refund the remaining balance left on the deployment account
 ```
 
 Run `make init`:
@@ -71,46 +81,47 @@ Check the available make targets to simulate and deploy the smart contracts:
 - [ ] I have cloned the official repository on my computer and I have checked out the corresponding branch
 - [ ] I am using the latest official docker engine, running a Debian Linux (stable) image
   - [ ] I have run `docker run --rm -it -v .:/deployment debian:bookworm-slim`
-  - [ ] I have run `apt update && apt install -y make curl git vim neovim bc`
-  - [ ] I have run `curl -L https://foundry.paradigm.xyz | bash`
-  - [ ] I have run `source /root/.bashrc && foundryup`
+  - [ ] I have run `apt update && apt install -y make curl git vim neovim bc jq`
+  - On **standard EVM networks**:
+    - [ ] I have run `curl -L https://foundry.paradigm.xyz | bash`
+    - [ ] I have run `source /root/.bashrc`
+    - [ ] I have run `foundryup`
+  - On **ZkSync networks**:
+    - [ ] I have run `curl -L https://raw.githubusercontent.com/matter-labs/foundry-zksync/main/install-foundry-zksync | bash`
+    - [ ] I have run `source /root/.bashrc`
+    - [ ] I have run `foundryup-zksync`
   - [ ] I have run `cd /deployment`
+  - [ ] I have run `cp .env.example .env` (if not previously done)
   - [ ] I have run `make init`
-  - [ ] I have printed the contents of `.env` and `.env.test` on the screen
 - [ ] I am opening an editor on the `/deployment` folder, within the Docker container
 - [ ] The `.env` file contains the correct parameters for the deployment
   - [ ] I have created a brand new burner wallet with `cast wallet new` and copied the private key to `DEPLOYMENT_PRIVATE_KEY` within `.env`
-  - [ ] I have reviewed the target network and RPC URL
+  - [ ] I have reviewed the target network and `RPC_URL`
 - [ ] All the tests run clean (`make test`)
-- **Target test network**
-  - [ ] I have run a preview deployment on the testnet
-    - `make predeploy-testnet`
-  - [ ] I have deployed my contracts successfully to the target testnet
-    - `make deploy-testnet`
-  - [ ] I have tested that these contracts work successfully
-- **Target production network**
 - [ ] My deployment wallet is a newly created account, ready for safe production deploys.
 - My computer:
   - [ ] Is running in a safe location and using a trusted network
   - [ ] It exposes no services or ports
   - [ ] The wifi or wired network in use does not expose any ports to a WAN
 - [ ] I have previewed my deploy without any errors
-  - `make predeploy-prodnet`
+  - `make predeploy`
 - [ ] The deployment wallet has sufficient native token for gas
   - At least, 15% more than the estimated simulation
 - [ ] `make test` still run clean
 - [ ] I have run `git status` and it reports no local changes
 - [ ] The current local git branch (`main`) corresponds to its counterpart on `origin`
   - [ ] I confirm that the rest of members of the ceremony pulled the last commit of my branch and reported the same commit hash as my output for `git log -n 1`
-- [ ] I have initiated the production deployment with `make deploy-prodnet`
+- [ ] I have initiated the production deployment with `make deploy`
 
 ### Post deployment checklist
 
 - [ ] The deployment process completed with no errors
+- [ ] The output of the latest `deployment-*.log` file corresponds to the console output
+- [ ] I have copied the `== Logs ==` section into [DEPLOYMENTS.md](./DEPLOYMENTS.md)
+- [ ] I have uploaded the log file to a remote place
 - [ ] The factory contract was deployed by the deployment address
 - [ ] All the project's smart contracts are correctly verified on the reference block explorer of the target network.
   -  [ ] This also includes contracts that aren't explicitly deployed (deployed on demand)
-- [ ] The output of the latest `deployment-*.log` file corresponds to the console output
 - [ ] I have transferred the remaining funds of the deployment wallet to the address that originally funded it
   - `make refund`
 

@@ -269,3 +269,25 @@ refund: ## Refund the remaining balance left on the deployment account
 			--rpc-url $(PRODNET_RPC_URL) \
 			--value $$REMAINING \
 			$(REFUND_ADDRESS)
+
+# In the case we need to whipe stuck transactions, by submiting a 0 value transaction with a specific nonce and higher gas
+# .PHONY: clean-nonces
+# clean-nonces:
+# 	for nonce in $(nonces); do \
+# 	  make clean-nonce nonce=$$nonce ; \
+# 	done
+
+# .PHONY: clean-nonce
+# clean-nonce:
+# 	cast send --private-key $(DEPLOYMENT_PRIVATE_KEY) \
+#  		--rpc-url $(RPC_URL) \
+#  		--value 0 \
+#       	--nonce $(nonce) \
+# set the following 2 params in deploy target too if needed         
+# 		--priority-gas-price 1000000000 \
+# 		--gas-price 6501000000000 \
+#  		$(DEPLOYMENT_ADDRESS)
+
+# .PHONY: gas-price
+# gas-price:
+# 	cast gas-price --rpc-url $(RPC_URL)

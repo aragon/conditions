@@ -66,7 +66,10 @@
 ## Chiliz
 
 ```
-TBD
+  Deploying from: 0x6818013d7B2D49D7396BA9733b59C539A639f3ED
+  Chain ID: 88888
+  
+  Condition Factory: 0x92628038421A0719bb99Fe065A7A255d983C443e
 ```
 
 ## Peaq

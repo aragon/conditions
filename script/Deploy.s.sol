@@ -7,7 +7,6 @@ import {ExecuteSelectorCondition} from "../src/ExecuteSelectorCondition.sol";
 import {SelectorCondition} from "../src/SelectorCondition.sol";
 import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
 import {IOwnerManager} from "../src/SafeOwnerCondition.sol";
-import {SafeMock} from "../test/mocks/SafeMock.sol";
 
 contract Deploy is Script {
     modifier broadcast() {
@@ -36,7 +35,7 @@ contract Deploy is Script {
 
         address safeAddress = vm.envOr("SAFE_ADDRESS", address(0));
         if (safeAddress == address(0)) {
-            safeAddress = address(new SafeMock());
+            safeAddress = address(new IsOwnerMock());
         }
         factory.deploySafeOwnerCondition(safeAddress);
 
@@ -44,4 +43,8 @@ contract Deploy is Script {
         console.log("Condition Factory:", address(factory));
         console.log("");
     }
+}
+
+contract IsOwnerMock {
+    function isOwner(address _owner) external view returns (bool) {}
 }

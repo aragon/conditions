@@ -6,7 +6,6 @@ import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
 import {ExecuteSelectorCondition} from "../src/ExecuteSelectorCondition.sol";
 import {SelectorCondition} from "../src/SelectorCondition.sol";
 import {SafeOwnerCondition, IOwnerManager} from "../src/SafeOwnerCondition.sol";
-import {SafeMock} from "../test/mocks/SafeMock.sol";
 
 /// @dev This is a development script used for internal testing purposes
 contract Create is Script {
@@ -37,7 +36,7 @@ contract Create is Script {
         SelectorCondition sc = new SelectorCondition(dao, selectors);
 
         if (safeAddress == address(0)) {
-            safeAddress = address(new SafeMock());
+            safeAddress = address(new IsOwnerMock());
         }
         SafeOwnerCondition so = new SafeOwnerCondition(IOwnerManager(safeAddress));
 
@@ -47,4 +46,8 @@ contract Create is Script {
         console.log("SafeOwnerCondition:", address(so));
         console.log("");
     }
+}
+
+contract IsOwnerMock {
+    function isOwner(address _owner) external view returns (bool) {}
 }

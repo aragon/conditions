@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.22;
 
-import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {IOwnerManager} from "../../src/interfaces/IOwnerManager.sol";
 
-contract SafeMock is IOwnerManager, IERC165 {
+contract SafeMock is IOwnerManager {
     mapping(address => bool) owners;
 
     function addOwnerWithThreshold(address owner, uint256 _threshold) external {}
@@ -30,9 +29,5 @@ contract SafeMock is IOwnerManager, IERC165 {
 
     function unsetOwner(address _who) public {
         owners[_who] = false;
-    }
-
-    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
-        return interfaceId == bytes4(0x1732b3df);
     }
 }

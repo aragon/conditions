@@ -2,9 +2,8 @@
 
 pragma solidity ^0.8.22;
 
-import {ERC165, IERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import {IPermissionCondition} from "@aragon/osx-commons-contracts/src/permission/condition/IPermissionCondition.sol";
-import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
 import {IOwnerManager} from "./interfaces/IOwnerManager.sol";
 
 /// @title SafeOwnerCondition
@@ -13,7 +12,7 @@ import {IOwnerManager} from "./interfaces/IOwnerManager.sol";
 contract SafeOwnerCondition is ERC165, IPermissionCondition {
     IOwnerManager public safe;
 
-    /// @notice Thrown when the address of the given Safe is empty or incompatible.
+    /// @notice Thrown when given Safe address is not valid.
     /// @param givenSafe The invalid address received
     error InvalidSafe(address givenSafe);
 
@@ -22,11 +21,8 @@ contract SafeOwnerCondition is ERC165, IPermissionCondition {
             revert InvalidSafe(address(_safe));
         }
 
-        try IERC165(address(_safe)).supportsInterface(type(IOwnerManager).interfaceId) returns (bool _supported) {
-            if (!_supported) {
-                revert InvalidSafe(address(_safe));
-            }
-        } catch {
+        try _safe.isOwner(address(0)) returns (bool) {}
+        catch {
             revert InvalidSafe(address(_safe));
         }
 

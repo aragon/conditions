@@ -42,9 +42,6 @@ contract SafeOwnerConditionTest is AragonTest {
     function test_RevertGiven_AContractThatIsNotASafe() external whenDeployingTheContract {
         // It should revert
 
-        assertEq(IERC165(address(safeOwnerCondition.safe())).supportsInterface(type(IOwnerManager).interfaceId), true);
-        assertEq(IERC165(address(safeOwnerCondition.safe())).supportsInterface(0x12345678), false);
-
         vm.expectRevert(abi.encodeWithSelector(InvalidSafe.selector, address(this)));
         new SafeOwnerCondition(IOwnerManager(address(this)));
     }

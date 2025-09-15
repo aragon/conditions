@@ -10,27 +10,7 @@ import {DaoUnauthorized} from "@aragon/osx-commons-contracts/src/permission/auth
 import {IPermissionCondition} from "@aragon/osx-commons-contracts/src/permission/condition/IPermissionCondition.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {SafeOwnerCondition, IOwnerManager} from "../src/SafeOwnerCondition.sol";
-// import {EXECUTE_PERMISSION_ID, SET_METADATA_PERMISSION_ID, MANAGE_SELECTORS_PERMISSION_ID} from "./constants.sol";
-
-contract SafeMock is IOwnerManager, IERC165 {
-    mapping(address => bool) owners;
-
-    function isOwner(address _owner) external view returns (bool) {
-        return owners[_owner];
-    }
-
-    function setOwner(address _who) public {
-        owners[_who] = true;
-    }
-
-    function unsetOwner(address _who) public {
-        owners[_who] = false;
-    }
-
-    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
-        return interfaceId == bytes4(0x1732b3df);
-    }
-}
+import {SafeMock} from "./mocks/SafeMock.sol";
 
 contract SafeOwnerConditionTest is AragonTest {
     DaoBuilder builder;
@@ -71,10 +51,10 @@ contract SafeOwnerConditionTest is AragonTest {
     function test_RevertGiven_AContractThatIsNotASafe() external whenDeployingTheContract {
         // It should revert
 
-        assertEq(IERC165(address(safeOwnerCondition.safe())).supportsInterface(0x1732b3df), true);
+        assertEq(IERC165(address(safeOwnerCondition.safe())).supportsInterface(type(IOwnerManager).interfaceId), true);
         assertEq(IERC165(address(safeOwnerCondition.safe())).supportsInterface(0x12345678), false);
 
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(InvalidSafe.selector, address(this)));
         new SafeOwnerCondition(dao, IOwnerManager(address(this)));
     }
 

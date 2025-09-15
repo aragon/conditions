@@ -38,7 +38,7 @@ contract Deploy is Script {
         if (safeAddress == address(0)) {
             safeAddress = address(new SafeMock());
         }
-        factory.deploySafeOwnerCondition(IDAO(address(0)), safeAddress);
+        factory.deploySafeOwnerCondition(safeAddress);
 
         // Result
         console.log("Condition Factory:", address(factory));

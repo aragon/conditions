@@ -3,7 +3,6 @@
 pragma solidity ^0.8.22;
 
 import {ERC165, IERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
-import {DaoAuthorizable} from "@aragon/osx-commons-contracts/src/permission/auth/DaoAuthorizable.sol";
 import {IPermissionCondition} from "@aragon/osx-commons-contracts/src/permission/condition/IPermissionCondition.sol";
 import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
 import {IOwnerManager} from "./interfaces/IOwnerManager.sol";
@@ -11,14 +10,14 @@ import {IOwnerManager} from "./interfaces/IOwnerManager.sol";
 /// @title SafeOwnerCondition
 /// @author AragonX 2025
 /// @notice A permission that only allows Safe owners to make use of a granted permission.
-contract SafeOwnerCondition is ERC165, IPermissionCondition, DaoAuthorizable {
+contract SafeOwnerCondition is ERC165, IPermissionCondition {
     IOwnerManager public safe;
 
     /// @notice Thrown when the address of the given Safe is empty or incompatible.
     /// @param givenSafe The invalid address received
     error InvalidSafe(address givenSafe);
 
-    constructor(IDAO _dao, IOwnerManager _safe) DaoAuthorizable(_dao) {
+    constructor(IOwnerManager _safe) {
         if (address(_safe) == address(0)) {
             revert InvalidSafe(address(_safe));
         }

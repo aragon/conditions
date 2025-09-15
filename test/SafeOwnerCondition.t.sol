@@ -2,9 +2,6 @@
 pragma solidity 0.8.23;
 
 import {AragonTest} from "./base/AragonTest.sol";
-import {DaoBuilder} from "./helpers/DaoBuilder.sol";
-import {DAO} from "@aragon/osx/core/dao/DAO.sol";
-import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
 import {Action} from "@aragon/osx-commons-contracts/src/executors/IExecutor.sol";
 import {DaoUnauthorized} from "@aragon/osx-commons-contracts/src/permission/auth/auth.sol";
 import {IPermissionCondition} from "@aragon/osx-commons-contracts/src/permission/condition/IPermissionCondition.sol";
@@ -13,8 +10,6 @@ import {SafeOwnerCondition, IOwnerManager} from "../src/SafeOwnerCondition.sol";
 import {SafeMock} from "./mocks/SafeMock.sol";
 
 contract SafeOwnerConditionTest is AragonTest {
-    DaoBuilder builder;
-    DAO dao;
     SafeMock safeMock;
     SafeOwnerCondition safeOwnerCondition;
 
@@ -22,11 +17,9 @@ contract SafeOwnerConditionTest is AragonTest {
 
     function setUp() public {
         vm.startPrank(alice);
-        builder = new DaoBuilder();
-        (dao,,,) = builder.build();
 
         safeMock = new SafeMock();
-        safeOwnerCondition = new SafeOwnerCondition(dao, safeMock);
+        safeOwnerCondition = new SafeOwnerCondition(safeMock);
     }
 
     modifier whenDeployingTheContract() {
@@ -34,10 +27,8 @@ contract SafeOwnerConditionTest is AragonTest {
     }
 
     function test_WhenDeployingTheContract() external view whenDeployingTheContract {
-        // It should set the given DAO
         // It should define the given safe address
 
-        assertEq(address(safeOwnerCondition.dao()), address(dao));
         assertEq(address(safeOwnerCondition.safe()), address(safeMock));
     }
 
@@ -45,7 +36,7 @@ contract SafeOwnerConditionTest is AragonTest {
         // It should revert
 
         vm.expectRevert(abi.encodeWithSelector(InvalidSafe.selector, address(0)));
-        new SafeOwnerCondition(dao, IOwnerManager(address(0)));
+        new SafeOwnerCondition(IOwnerManager(address(0)));
     }
 
     function test_RevertGiven_AContractThatIsNotASafe() external whenDeployingTheContract {
@@ -55,7 +46,7 @@ contract SafeOwnerConditionTest is AragonTest {
         assertEq(IERC165(address(safeOwnerCondition.safe())).supportsInterface(0x12345678), false);
 
         vm.expectRevert(abi.encodeWithSelector(InvalidSafe.selector, address(this)));
-        new SafeOwnerCondition(dao, IOwnerManager(address(this)));
+        new SafeOwnerCondition(IOwnerManager(address(this)));
     }
 
     modifier whenCallingIsGranted() {

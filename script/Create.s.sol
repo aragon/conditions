@@ -39,7 +39,7 @@ contract Create is Script {
         if (safeAddress == address(0)) {
             safeAddress = address(new SafeMock());
         }
-        SafeOwnerCondition so = new SafeOwnerCondition(dao, IOwnerManager(safeAddress));
+        SafeOwnerCondition so = new SafeOwnerCondition(IOwnerManager(safeAddress));
 
         // Result
         console.log("ExecuteSelectorCondition:", address(esc));

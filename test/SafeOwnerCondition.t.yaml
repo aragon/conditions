@@ -7,7 +7,6 @@ SafeOwnerConditionTest:
       - given: a contract that is not a Safe
         then:
           - it: should revert
-      - it: should set the given DAO
       - it: should define the given safe address
   - when: calling isGranted
     and:

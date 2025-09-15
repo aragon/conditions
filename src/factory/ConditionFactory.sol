@@ -30,8 +30,8 @@ contract ConditionFactory {
         emit SelectorConditionDeployed(newContract);
     }
 
-    function deploySafeOwnerCondition(IDAO _dao, address _safe) public returns (SafeOwnerCondition newContract) {
-        newContract = new SafeOwnerCondition(_dao, IOwnerManager(_safe));
+    function deploySafeOwnerCondition(address _safe) public returns (SafeOwnerCondition newContract) {
+        newContract = new SafeOwnerCondition(IOwnerManager(_safe));
         emit SafeOwnerConditionDeployed(newContract);
     }
 }

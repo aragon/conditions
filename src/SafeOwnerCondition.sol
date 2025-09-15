@@ -12,17 +12,14 @@ import {IOwnerManager} from "./interfaces/IOwnerManager.sol";
 contract SafeOwnerCondition is ERC165, IPermissionCondition {
     IOwnerManager public safe;
 
-    /// @notice Thrown when given Safe address is not valid.
-    /// @param givenSafe The invalid address received
-    error InvalidSafe(address givenSafe);
+    /// @notice Thrown when given address is not a compatible Safe.
+    /// @param invalidAddress The address received.
+    error InvalidSafe(address invalidAddress);
 
     constructor(IOwnerManager _safe) {
-        if (address(_safe) == address(0)) {
-            revert InvalidSafe(address(_safe));
-        }
-
-        try _safe.isOwner(address(0)) returns (bool) {}
-        catch {
+        (bool success, bytes memory result) =
+            address(_safe).staticcall(abi.encodeWithSelector(IOwnerManager.isOwner.selector, address(0)));
+        if (!success || result.length < 32) {
             revert InvalidSafe(address(_safe));
         }
 
@@ -38,7 +35,15 @@ contract SafeOwnerCondition is ERC165, IPermissionCondition {
     {
         (_where, _permissionId, _data);
 
-        return safe.isOwner(_who);
+        (bool success, bytes memory result) =
+            address(safe).staticcall(abi.encodeWithSelector(IOwnerManager.isOwner.selector, _who));
+
+        // If the call failed or returned malformed data, treat as "not owner"
+        if (!success || result.length < 32) {
+            return false;
+        }
+
+        return abi.decode(result, (bool));
     }
 
     /// @notice Checks if an interface is supported by this or its parent contract.

@@ -16,6 +16,7 @@ This reposity contains a library of OSx conditions, meant to be used by any DAO 
 
 - Execute Selector Condition: only allows a predefined set of function selectors to be invoked via `execute()`
 - Selector Condition: only allows a predefined set of function selectors to be invoked directly
+- Safe Owner condition: restricts the permission to only be available to the owners of a given Safe
 
 [Learn more about Aragon OSx](#osx-protocol-overview).
 

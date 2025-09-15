@@ -4,6 +4,7 @@ pragma solidity ^0.8.22;
 import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
 import {ExecuteSelectorCondition} from "../ExecuteSelectorCondition.sol";
 import {SelectorCondition} from "../SelectorCondition.sol";
+import {SafeOwnerCondition, IOwnerManager} from "../SafeOwnerCondition.sol";
 
 /// @title ConditionFactory
 /// @author AragonX 2025
@@ -11,6 +12,7 @@ import {SelectorCondition} from "../SelectorCondition.sol";
 contract ConditionFactory {
     event ExecuteSelectorConditionDeployed(ExecuteSelectorCondition newContract);
     event SelectorConditionDeployed(SelectorCondition newContract);
+    event SafeOwnerConditionDeployed(SafeOwnerCondition newContract);
 
     function deployExecuteSelectorCondition(IDAO _dao, ExecuteSelectorCondition.SelectorTarget[] memory _initialEntries)
         public
@@ -26,5 +28,10 @@ contract ConditionFactory {
     {
         newContract = new SelectorCondition(_dao, _initialSelectors);
         emit SelectorConditionDeployed(newContract);
+    }
+
+    function deploySafeOwnerCondition(address _safe) public returns (SafeOwnerCondition newContract) {
+        newContract = new SafeOwnerCondition(IOwnerManager(_safe));
+        emit SafeOwnerConditionDeployed(newContract);
     }
 }

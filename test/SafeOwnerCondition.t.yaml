@@ -1,0 +1,22 @@
+SafeOwnerConditionTest:
+  - when: deploying the contract
+    then:
+      - given: an empty address
+        then:
+          - it: should revert
+      - given: a contract that is not a Safe
+        then:
+          - it: should revert
+      - it: should define the given safe address
+  - when: calling isGranted
+    and:
+      - given: the given _who is not a Safe member
+        then:
+          - it: should return false
+      - given: the given _who is a Safe member
+        then:
+          - it: should return true
+  - when: calling supportsInterface
+    and:
+      - it: does not support the empty interface
+      - it: supports IPermissionCondition

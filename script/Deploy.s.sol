@@ -6,6 +6,7 @@ import {ConditionFactory} from "../src/factory/ConditionFactory.sol";
 import {ExecuteSelectorCondition} from "../src/ExecuteSelectorCondition.sol";
 import {SelectorCondition} from "../src/SelectorCondition.sol";
 import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
+import {IOwnerManager} from "../src/SafeOwnerCondition.sol";
 
 contract Deploy is Script {
     modifier broadcast() {
@@ -22,7 +23,6 @@ contract Deploy is Script {
         console.log("Chain ID:", block.chainid);
         console.log("");
 
-        // The factory
         ConditionFactory factory = new ConditionFactory();
 
         // Deploy dummy instances to force verifying the source
@@ -33,8 +33,18 @@ contract Deploy is Script {
         factory.deployExecuteSelectorCondition(IDAO(address(0)), initialEntries);
         factory.deploySelectorCondition(IDAO(address(0)), selectors);
 
+        address safeAddress = vm.envOr("SAFE_ADDRESS", address(0));
+        if (safeAddress == address(0)) {
+            safeAddress = address(new IsOwnerMock());
+        }
+        factory.deploySafeOwnerCondition(safeAddress);
+
         // Result
         console.log("Condition Factory:", address(factory));
         console.log("");
     }
+}
+
+contract IsOwnerMock {
+    function isOwner(address _owner) external view returns (bool) {}
 }

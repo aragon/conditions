@@ -17,9 +17,10 @@ contract SafeOwnerCondition is ERC165, IPermissionCondition {
     error InvalidSafe(address invalidAddress);
 
     constructor(IOwnerManager _safe) {
+        // Check if the given address is compatible with a Safe
         (bool success, bytes memory result) =
             address(_safe).staticcall(abi.encodeWithSelector(IOwnerManager.isOwner.selector, address(0)));
-        if (!success || result.length < 32) {
+        if (!success || result.length != 32) {
             revert InvalidSafe(address(_safe));
         }
 
@@ -39,7 +40,7 @@ contract SafeOwnerCondition is ERC165, IPermissionCondition {
             address(safe).staticcall(abi.encodeWithSelector(IOwnerManager.isOwner.selector, _who));
 
         // If the call failed or returned malformed data, treat as "not owner"
-        if (!success || result.length < 32) {
+        if (!success || result.length != 32) {
             return false;
         }
 

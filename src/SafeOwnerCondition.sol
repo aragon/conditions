@@ -23,7 +23,6 @@ contract SafeOwnerCondition is ERC165, IPermissionCondition {
         if (!success || result.length != 32) {
             revert InvalidSafe(address(_safe));
         }
-        abi.decode(result, (bool));
 
         safe = _safe;
     }

@@ -6,19 +6,7 @@ import {ERC165, IERC165} from "@openzeppelin/contracts/utils/introspection/ERC16
 import {DaoAuthorizable} from "@aragon/osx-commons-contracts/src/permission/auth/DaoAuthorizable.sol";
 import {IPermissionCondition} from "@aragon/osx-commons-contracts/src/permission/condition/IPermissionCondition.sol";
 import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
-
-/**
- * @title Owner Manager Interface
- * @notice Interface for managing Safe owners and a threshold to authorize transactions.
- * @author @safe-global/safe-protocol
- */
-interface IOwnerManager {
-    /**
-     * @notice Returns if `owner` is an owner of the Safe.
-     * @return Boolean if `owner` is an owner of the Safe.
-     */
-    function isOwner(address owner) external view returns (bool);
-}
+import {IOwnerManager} from "./interfaces/IOwnerManager.sol";
 
 /// @title SafeOwnerCondition
 /// @author AragonX 2025
@@ -31,8 +19,15 @@ contract SafeOwnerCondition is ERC165, IPermissionCondition, DaoAuthorizable {
     error InvalidSafe(address givenSafe);
 
     constructor(IDAO _dao, IOwnerManager _safe) DaoAuthorizable(_dao) {
-        if (address(_safe) == address(0) || !IERC165(address(_safe)).supportsInterface(0x1732b3df)) {
-            // It doesn't support the IOwnerManager interface
+        if (address(_safe) == address(0)) {
+            revert InvalidSafe(address(_safe));
+        }
+
+        try IERC165(address(_safe)).supportsInterface(type(IOwnerManager).interfaceId) returns (bool _supported) {
+            if (!_supported) {
+                revert InvalidSafe(address(_safe));
+            }
+        } catch {
             revert InvalidSafe(address(_safe));
         }
 

@@ -14,14 +14,14 @@ contract OnlyMemberCondition is ERC165, IPermissionCondition {
 
     /// @notice Thrown when given address is not compatible with IMembership.
     /// @param invalidAddress The address received.
-    error InvalidAddress(address invalidAddress);
+    error InvalidTarget(address invalidAddress);
 
     constructor(IMembership _target) {
         // Check if the given address is compatible with a Safe
         (bool success, bytes memory result) =
             address(_target).staticcall(abi.encodeWithSelector(IMembership.isMember.selector, address(0)));
         if (!success || result.length != 32) {
-            revert InvalidAddress(address(_target));
+            revert InvalidTarget(address(_target));
         }
 
         target = _target;

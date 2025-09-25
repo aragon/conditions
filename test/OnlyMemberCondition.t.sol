@@ -14,7 +14,7 @@ contract OnlyMemberConditionTest is AragonTest {
     MembershipMock membershipMock;
     OnlyMemberCondition onlyMemberCondition;
 
-    error InvalidAddress(address invalidAddress);
+    error InvalidTarget(address invalidAddress);
 
     function setUp() public {
         vm.startPrank(alice);
@@ -36,14 +36,14 @@ contract OnlyMemberConditionTest is AragonTest {
     function test_RevertGiven_AnEmptyAddress() external whenDeployingTheContract {
         // It should revert
 
-        vm.expectRevert(abi.encodeWithSelector(InvalidAddress.selector, address(0)));
+        vm.expectRevert(abi.encodeWithSelector(InvalidTarget.selector, address(0)));
         new OnlyMemberCondition(IMembership(address(0)));
     }
 
     function test_RevertGiven_AContractThatDoesNotImplementIMembership() external whenDeployingTheContract {
         // It should revert
 
-        vm.expectRevert(abi.encodeWithSelector(InvalidAddress.selector, address(this)));
+        vm.expectRevert(abi.encodeWithSelector(InvalidTarget.selector, address(this)));
         new OnlyMemberCondition(IMembership(address(this)));
     }
 

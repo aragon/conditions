@@ -12,73 +12,73 @@
 ## Polygon
 
 ```
-  Deploying from: 0x6818013d7B2D49D7396BA9733b59C539A639f3ED
+  Deploying from: 0x5549ec1e8281C94EEb9c9d04859FCE676Ea00C3c
   Chain ID: 137
 
-  Condition Factory: 0x2680D4088BC00Af4d97C245534dC71a80e5a661d
+  Condition Factory: 0x988B0e1542d5e9494897778ebc444E9FfDa58Ddb
 ```
 
 ## Base
 
 ```
-  Deploying from: 0x6818013d7B2D49D7396BA9733b59C539A639f3ED
+  Deploying from: 0x5549ec1e8281C94EEb9c9d04859FCE676Ea00C3c
   Chain ID: 8453
 
-  Condition Factory: 0x2680D4088BC00Af4d97C245534dC71a80e5a661d
+  Condition Factory: 0x988B0e1542d5e9494897778ebc444E9FfDa58Ddb
 ```
 
 ## Arbitrum
 
 ```
-  Deploying from: 0x6818013d7B2D49D7396BA9733b59C539A639f3ED
+  Deploying from: 0x5549ec1e8281C94EEb9c9d04859FCE676Ea00C3c
   Chain ID: 42161
 
-  Condition Factory: 0xE84617abe8487438976dFAd5131dd61A58B1D1bF
+  Condition Factory: 0x988B0e1542d5e9494897778ebc444E9FfDa58Ddb
 ```
 
 ## Optimism
 
 ```
-  Deploying from: 0x6818013d7B2D49D7396BA9733b59C539A639f3ED
+  Deploying from: 0x5549ec1e8281C94EEb9c9d04859FCE676Ea00C3c
   Chain ID: 10
 
-  Condition Factory: 0x2680D4088BC00Af4d97C245534dC71a80e5a661d
+  Condition Factory: 0x988B0e1542d5e9494897778ebc444E9FfDa58Ddb
 ```
 
 ## ZKSync
 
 ```
-  Deploying from: 0x6818013d7B2D49D7396BA9733b59C539A639f3ED
+  Deploying from: 0x5549ec1e8281C94EEb9c9d04859FCE676Ea00C3c
   Chain ID: 324
 
-  Condition Factory: 0xE84617abe8487438976dFAd5131dd61A58B1D1bF
+  Condition Factory: 0x988B0e1542d5e9494897778ebc444E9FfDa58Ddb
 ```
 
 ## Corn
 
 ```
-  Deploying from: 0x6818013d7B2D49D7396BA9733b59C539A639f3ED
+  Deploying from: 0x5549ec1e8281C94EEb9c9d04859FCE676Ea00C3c
   Chain ID: 21000000
 
-  Condition Factory: 0x2680D4088BC00Af4d97C245534dC71a80e5a661d
+  Condition Factory: 0x988B0e1542d5e9494897778ebc444E9FfDa58Ddb
 ```
 
 ## Chiliz
 
 ```
-  Deploying from: 0x6818013d7B2D49D7396BA9733b59C539A639f3ED
+  Deploying from: 0x5549ec1e8281C94EEb9c9d04859FCE676Ea00C3c
   Chain ID: 88888
 
-  Condition Factory: 0x92628038421A0719bb99Fe065A7A255d983C443e
+  Condition Factory: 0x988B0e1542d5e9494897778ebc444E9FfDa58Ddb
 ```
 
 ## Peaq
 
 ```
-  Deploying from: 0x6818013d7B2D49D7396BA9733b59C539A639f3ED
+  Deploying from: 0x5549ec1e8281C94EEb9c9d04859FCE676Ea00C3c
   Chain ID: 3338
 
-  Condition Factory: 0xC0D355AF8e53F8414299bEeF5aA92c15c0aAb91B
+  Condition Factory: 0xdFc18C8Cd61f6cfD0A3B0aF0C0f9a752e2BF1515
 ```
 
 ## Sepolia
@@ -93,8 +93,8 @@
 ## ZKSync Sepolia
 
 ```
-  Deploying from: 0x6818013d7B2D49D7396BA9733b59C539A639f3ED
+  Deploying from: 0x5549ec1e8281C94EEb9c9d04859FCE676Ea00C3c
   Chain ID: 300
 
-  Condition Factory: 0x2D4884532a637627A590A28b05298FF9d8cB18FA
+  Condition Factory: 0x988B0e1542d5e9494897778ebc444E9FfDa58Ddb
 ```

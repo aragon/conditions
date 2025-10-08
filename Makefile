@@ -8,13 +8,13 @@ SHELL:=/bin/bash
 # CONSTANTS
 
 SOLC_VERSION := $(shell cat foundry.toml | grep solc | cut -d= -f2 | xargs echo || echo "0.8.23")
-TEST_TREE_MARKDOWN=TEST_TREE.md
+TEST_TREE_MARKDOWN=TESTS.md
 MAKEFILE=Makefile
 DEPLOYMENT_SCRIPT=Deploy
 DEPLOY_SCRIPT:=script/$(DEPLOYMENT_SCRIPT).s.sol:$(DEPLOYMENT_SCRIPT)
 CREATE_SCRIPT:=script/Create.s.sol:Create
 VERIFY_CONTRACTS_SCRIPT := script/verify-contracts.sh
-SUPPORTED_VERIFIERS := etherscan blockscout sourcify routescan-mainnet routescan-testnet
+SUPPORTED_VERIFIERS := etherscan blockscout sourcify zksync routescan-mainnet routescan-testnet
 MAKE_TEST_TREE_CMD=deno run ./test/script/make-test-tree.ts
 LOGS_FOLDER := ./logs
 VERBOSITY:=-vvv
@@ -28,6 +28,7 @@ DEPLOYMENT_ADDRESS = $(shell cast wallet address --private-key $(DEPLOYMENT_PRIV
 NETWORK_NAME:=$(strip $(subst ',, $(subst ",,$(NETWORK_NAME))))
 CHAIN_ID:=$(strip $(subst ',, $(subst ",,$(CHAIN_ID))))
 VERIFIER:=$(strip $(subst ',, $(subst ",,$(VERIFIER))))
+BLOCKSCOUT_HOST_NAME:=$(strip $(subst ',, $(subst ",,$(BLOCKSCOUT_HOST_NAME))))
 
 DEPLOYMENT_LOG_FILE=deployment-$(NETWORK_NAME)-$(shell date +"%y-%m-%d-%H-%M").log
 CREATION_LOG_FILE=creation-$(NETWORK_NAME)-$(shell date +"%y-%m-%d-%H-%M").log
@@ -44,18 +45,20 @@ ifeq ($(VERIFIER), etherscan)
 	VERIFIER_URL := https://api.etherscan.io/api
 	VERIFIER_API_KEY := $(ETHERSCAN_API_KEY)
 	VERIFIER_PARAMS := --verifier $(VERIFIER) --etherscan-api-key $(ETHERSCAN_API_KEY)
-endif
-
-ifeq ($(VERIFIER), blockscout)
+else ifeq ($(VERIFIER), blockscout)
 	VERIFIER_URL := https://$(BLOCKSCOUT_HOST_NAME)/api\?
 	VERIFIER_API_KEY := ""
 	VERIFIER_PARAMS = --verifier $(VERIFIER) --verifier-url "$(VERIFIER_URL)"
-endif
-
-# ifeq ($(VERIFIER), sourcify)
-# endif
-
-ifneq ($(filter $(VERIFIER), routescan-mainnet routescan-testnet),)
+else ifeq ($(VERIFIER), sourcify)
+else ifeq ($(VERIFIER), zksync)
+	ifeq ($(CHAIN_ID),300)
+		VERIFIER_URL := https://explorer.sepolia.era.zksync.dev/contract_verification
+	else ifeq ($(CHAIN_ID),324)
+	    VERIFIER_URL := https://zksync2-mainnet-explorer.zksync.io/contract_verification
+	endif
+	VERIFIER_API_KEY := ""
+	VERIFIER_PARAMS = --verifier $(VERIFIER) --verifier-url "$(VERIFIER_URL)"
+else ifneq ($(filter $(VERIFIER), routescan-mainnet routescan-testnet),)
 	ifeq ($(VERIFIER), routescan-mainnet)
 		VERIFIER_URL := https://api.routescan.io/v2/network/mainnet/evm/$(CHAIN_ID)/etherscan
 	else
@@ -67,9 +70,15 @@ ifneq ($(filter $(VERIFIER), routescan-mainnet routescan-testnet),)
 	VERIFIER_PARAMS = --verifier $(VERIFIER) --verifier-url '$(VERIFIER_URL)' --etherscan-api-key $(VERIFIER_API_KEY)
 endif
 
-# When invoked like `make deploy slow=true`
-ifeq ($(slow),true)
-	SLOW_FLAG := --slow
+# Additional chain-dependent params (Foundry)
+ifeq ($(CHAIN_ID),88888)
+	FORGE_SCRIPT_CUSTOM_PARAMS := --priority-gas-price 1000000000 --gas-price 5200000000000
+else ifeq ($(CHAIN_ID),300)
+	FORGE_SCRIPT_CUSTOM_PARAMS := --slow
+	FORGE_BUILD_CUSTOM_PARAMS := --zksync
+else ifeq ($(CHAIN_ID),324)
+	FORGE_SCRIPT_CUSTOM_PARAMS := --slow
+	FORGE_BUILD_CUSTOM_PARAMS := --zksync
 endif
 
 # TARGETS
@@ -110,6 +119,7 @@ clean: ## Clean the build artifacts
 test: export RPC_URL=""
 test: export ETHERSCAN_API_KEY=
 test-coverage: export RPC_URL=""
+test-coverage: export ETHERSCAN_API_KEY=
 
 .PHONY: test
 test: ## Run unit tests, locally
@@ -174,11 +184,6 @@ $(TEST_TREE_FILES): $(TEST_SOURCE_FILES)
 		cat $$file | $(MAKE_TEST_TREE_CMD) > $${file%.t.yaml}.tree ; \
 	done
 
-# Copy the .env files if not present
-.env:
-	cp .env.example .env
-	@echo "NOTE: Edit the correct values of .env before you continue"
-
 ## Deployment targets:
 
 .PHONY: predeploy
@@ -186,6 +191,8 @@ predeploy:  ## Simulate a factory deployment
 	@echo "Simulating the deployment"
 	forge script $(DEPLOY_SCRIPT) \
 		--rpc-url $(RPC_URL) \
+		$(FORGE_BUILD_CUSTOM_PARAMS) \
+		$(FORGE_SCRIPT_CUSTOM_PARAMS) \
 		$(VERBOSITY)
 
 .PHONY: deploy
@@ -197,9 +204,10 @@ deploy: test  ## Deploy the factory and verify the source code
 		--retries 10 \
 		--delay 8 \
 		--broadcast \
-		$(SLOW_FLAG) \
 		--verify \
 		$(VERIFIER_PARAMS) \
+		$(FORGE_BUILD_CUSTOM_PARAMS) \
+		$(FORGE_SCRIPT_CUSTOM_PARAMS) \
 		$(VERBOSITY) 2>&1 | tee -a $(LOGS_FOLDER)/$(DEPLOYMENT_LOG_FILE)
 
 ##
@@ -209,6 +217,8 @@ precreate: ## Simulate running Create.s.sol
 	@echo "Simulating condition creation"
 	forge script $(CREATE_SCRIPT) \
 		--rpc-url $(RPC_URL) \
+		$(FORGE_BUILD_CUSTOM_PARAMS) \
+		$(FORGE_SCRIPT_CUSTOM_PARAMS) \
 		$(VERBOSITY)
 
 .PHONY: create
@@ -220,26 +230,27 @@ create: test ## Run Create.s.sol to create new condition instances
 		--retries 10 \
 		--delay 8 \
 		--broadcast \
-		$(SLOW_FLAG) \
 		--verify \
 		$(VERIFIER_PARAMS) \
+		$(FORGE_BUILD_CUSTOM_PARAMS) \
+		$(FORGE_SCRIPT_CUSTOM_PARAMS) \
 		$(VERBOSITY) 2>&1 | tee -a $(LOGS_FOLDER)/$(CREATION_LOG_FILE)
 
 ## Verification:
 
 .PHONY: verify-etherscan
 verify-etherscan: broadcast/$(DEPLOYMENT_SCRIPT).s.sol/$(CHAIN_ID)/run-latest.json ## Verify the last deployment on an Etherscan (compatible) explorer
-	forge build
+	forge build $(FORGE_BUILD_CUSTOM_PARAMS)
 	bash $(VERIFY_CONTRACTS_SCRIPT) $(CHAIN_ID) $(VERIFIER) $(VERIFIER_URL) $(VERIFIER_API_KEY)
 
 .PHONY: verify-blockscout
 verify-blockscout: broadcast/$(DEPLOYMENT_SCRIPT).s.sol/$(CHAIN_ID)/run-latest.json ## Verify the last deployment on BlockScout
-	forge build
+	forge build $(FORGE_BUILD_CUSTOM_PARAMS)
 	bash $(VERIFY_CONTRACTS_SCRIPT) $(CHAIN_ID) $(VERIFIER) https://$(BLOCKSCOUT_HOST_NAME)/api $(VERIFIER_API_KEY)
 
 .PHONY: verify-sourcify
 verify-sourcify: broadcast/$(DEPLOYMENT_SCRIPT).s.sol/$(CHAIN_ID)/run-latest.json ## Verify the last deployment on Sourcify
-	forge build
+	forge build $(FORGE_BUILD_CUSTOM_PARAMS)
 	bash $(VERIFY_CONTRACTS_SCRIPT) $(CHAIN_ID) $(VERIFIER) "" ""
 
 ##
@@ -270,24 +281,28 @@ refund: ## Refund the remaining balance left on the deployment account
 			--value $$REMAINING \
 			$(REFUND_ADDRESS)
 
+.PHONY: gas-price
+gas-price:
+	@echo "Gas price ($(NETWORK_NAME)):"
+	@cast gas-price --rpc-url $(RPC_URL)
+
+.PHONY: balance
+balance:
+	@echo "Balance of $(DEPLOYMENT_ADDRESS) ($(NETWORK_NAME)):"
+	@BALANCE=$$(cast balance $(DEPLOYMENT_ADDRESS) --rpc-url $(RPC_URL)) && \
+		cast --to-unit $$BALANCE ether
+
 # In the case we need to whipe stuck transactions, by submiting a 0 value transaction with a specific nonce and higher gas
-# .PHONY: clean-nonces
-# clean-nonces:
-# 	for nonce in $(nonces); do \
-# 	  make clean-nonce nonce=$$nonce ; \
-# 	done
+.PHONY: clean-nonces
+clean-nonces:
+	for nonce in $(nonces); do \
+	  make clean-nonce nonce=$$nonce ; \
+	done
 
-# .PHONY: clean-nonce
-# clean-nonce:
-# 	cast send --private-key $(DEPLOYMENT_PRIVATE_KEY) \
-#  		--rpc-url $(RPC_URL) \
-#  		--value 0 \
-#       	--nonce $(nonce) \
-# set the following 2 params in deploy target too if needed         
-# 		--priority-gas-price 1000000000 \
-# 		--gas-price 6501000000000 \
-#  		$(DEPLOYMENT_ADDRESS)
-
-# .PHONY: gas-price
-# gas-price:
-# 	cast gas-price --rpc-url $(RPC_URL)
+.PHONY: clean-nonce
+clean-nonce:
+	cast send --private-key $(DEPLOYMENT_PRIVATE_KEY) \
+ 			--rpc-url $(RPC_URL) \
+ 			--value 0 \
+            --nonce $(nonce) \
+ 			$(DEPLOYMENT_ADDRESS)

@@ -72,6 +72,15 @@
   Condition Factory: 0x988B0e1542d5e9494897778ebc444E9FfDa58Ddb
 ```
 
+## Avalanche
+
+```
+  Deploying from: 0x15a9520995d426C77D001e26BA221ab1593B5AdC
+  Chain ID: 43114
+
+  Condition Factory: 0x3AB0866601fD82f255432D2Bb78E37C115537aB5
+```
+
 ## Peaq
 
 ```

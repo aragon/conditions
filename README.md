@@ -4,6 +4,12 @@ This reposity contains a library of OSx conditions, meant to be used by any DAO 
 
 ## Audit
 
+### September 2025
+
+**Halborn**: [Safe owner condition](./audits/halborn-safe-owner.pdf)
+
+- Commit ID: [df9320ab](https://github.com/aragon/conditions/commit/12bfb3b3b60f91b99322248f6946090ab747b4b9)
+
 ### July 2025
 
 **Halborn**: [audit report](./audits/halborn-audit.pdf)

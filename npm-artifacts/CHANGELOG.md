@@ -15,7 +15,7 @@ Initial release of `@aragon/condition-library-artifacts`.
   - `SelectorConditionABI` — restricts which selectors can be invoked directly.
   - `SafeOwnerConditionABI` — restricts a permission to the owners of a Safe.
   - `IOwnerManagerABI` — the Safe owner-manager interface consumed by `SafeOwnerCondition`.
-- `addresses.conditionFactory.<network>` for the 12 networks where the factory is currently deployed: `arbitrum`, `avalanche`, `base`, `chiliz`, `corn`, `mainnet`, `optimism`, `peaq`, `polygon`, `sepolia`, `zksync`, `zksyncSepolia`.
+- `addresses.conditionFactory.<network>` for the 13 networks where the factory is currently deployed: `arbitrum`, `avalanche`, `base`, `chiliz`, `citrea`, `corn`, `mainnet`, `optimism`, `peaq`, `polygon`, `sepolia`, `zksync`, `zksyncSepolia`.
 - Build pipeline based on `just` + `bun` + `forge`. Run `just abi` to regenerate `src/abi.ts` from forge artifacts at the repo root; `just build` chains that with `tsc` to produce `dist/`.
 
 ### Notes

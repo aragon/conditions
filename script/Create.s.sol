@@ -10,7 +10,7 @@ import {SafeOwnerCondition, IOwnerManager} from "../src/SafeOwnerCondition.sol";
 /// @dev This is a development script used for internal testing purposes
 contract Create is Script {
     modifier broadcast() {
-        uint256 privKey = vm.envUint("DEPLOYMENT_PRIVATE_KEY");
+        uint256 privKey = vm.envUint("DEPLOYER_KEY");
         vm.startBroadcast(privKey);
         console.log("Running from:", vm.addr(privKey));
 

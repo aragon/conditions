@@ -8,12 +8,13 @@ out/
 # Docs
 docs/
 
-# Dotenv file
+# Dotenv files
 .env
+.env.*
+!.env.example
 
 lcov.info*
 report/
 .DS_Store
 
-*.tree
 logs/*

@@ -50,11 +50,9 @@ contract DaoBuilder is Test {
     {
         // Deploy the DAO with `this` as root
         dao = DAO(
-            payable(
-                createProxyAndCall(
+            payable(createProxyAndCall(
                     address(DAO_BASE), abi.encodeCall(DAO.initialize, ("", address(this), address(0x0), ""))
-                )
-            )
+                ))
         );
 
         // Deploy conditions

@@ -1,0 +1,16 @@
+{
+  "conditionFactory": {
+    "arbitrum": "0x988B0e1542d5e9494897778ebc444E9FfDa58Ddb",
+    "avalanche": "0x3AB0866601fD82f255432D2Bb78E37C115537aB5",
+    "base": "0x988B0e1542d5e9494897778ebc444E9FfDa58Ddb",
+    "chiliz": "0x988B0e1542d5e9494897778ebc444E9FfDa58Ddb",
+    "corn": "0x988B0e1542d5e9494897778ebc444E9FfDa58Ddb",
+    "mainnet": "0x988B0e1542d5e9494897778ebc444E9FfDa58Ddb",
+    "optimism": "0x988B0e1542d5e9494897778ebc444E9FfDa58Ddb",
+    "peaq": "0xdFc18C8Cd61f6cfD0A3B0aF0C0f9a752e2BF1515",
+    "polygon": "0x988B0e1542d5e9494897778ebc444E9FfDa58Ddb",
+    "sepolia": "0x988B0e1542d5e9494897778ebc444E9FfDa58Ddb",
+    "zksync": "0x988B0e1542d5e9494897778ebc444E9FfDa58Ddb",
+    "zksyncSepolia": "0x988B0e1542d5e9494897778ebc444E9FfDa58Ddb"
+  }
+}

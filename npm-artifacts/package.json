@@ -1,0 +1,27 @@
+{
+  "name": "@aragon/condition-library-artifacts",
+  "version": "1.0.0",
+  "description": "ABI definitions and deployed addresses for the Aragon OSx Condition Library",
+  "typings": "dist/index.d.ts",
+  "main": "dist/index.js",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aragon/conditions"
+  },
+  "author": "Aragon X",
+  "license": "AGPL-3.0-or-later",
+  "bugs": {
+    "url": "https://github.com/aragon/conditions/issues"
+  },
+  "homepage": "https://github.com/aragon/conditions/tree/main/npm-artifacts#readme",
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

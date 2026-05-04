@@ -1,51 +1,58 @@
-name: test
+name: CI
+
+permissions: {}
+
+# Triggers are arranged so each commit produces exactly one CI run:
+# - push to main always runs (post-merge or direct push)
+# - pull_request events always run (PRs always have CI before merge)
+# - feature-branch pushes outside a PR don't trigger anything
 
 on:
-  workflow_dispatch:
-  push:
-    paths:
-      - "lib/**"
-      - "script/**"
-      - "src/**"
-      - "test/**"
-      - "utils/**"
-      - ".github/workflows/*.yml"
-      - ".gitignore"
-      - "remappings.txt"
-      - "foundry.toml"
+    push:
+        branches: [main]
+    pull_request:
+    workflow_dispatch:
 
 env:
-  FOUNDRY_PROFILE: ci
+    FOUNDRY_PROFILE: ci
 
 jobs:
-  check:
-    strategy:
-      fail-fast: true
+    ci:
+        name: Foundry project + ABI freshness
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  persist-credentials: false
+                  submodules: recursive
 
-    name: Foundry project
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
+            - name: Install Foundry
+              uses: foundry-rs/foundry-toolchain@v1
+              with:
+                  version: v1.5.1
 
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
+            - name: Install just
+              uses: extractions/setup-just@v2
 
-      - name: Run format check
-        run: |
-          forge fmt --check
-        id: format-check
+            - name: Show Forge version
+              run: forge --version
 
-      - name: Run Forge build
-        run: |
-          forge --version
-          forge build --sizes
-        id: build
+            - name: Run Forge fmt
+              run: forge fmt --check
 
-      - name: Run Forge tests
-        run: |
-          forge test -vvv
-        id: test
+            - name: Run Forge build
+              run: forge build --sizes
+
+            - name: Run Forge tests
+              run: forge test -vvv --no-match-path '**/fork/**'
+
+            - name: Verify ABI is in sync with contracts
+              run: |
+                  (cd npm-artifacts && just abi)
+                  if ! git diff --exit-code -- npm-artifacts/src/abi.ts; then
+                    echo "::error::npm-artifacts/src/abi.ts is out of date."
+                    echo "::error::Run 'just abi' from npm-artifacts/ locally and commit the diff."
+                    exit 1
+                  fi

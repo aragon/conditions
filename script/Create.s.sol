@@ -73,12 +73,7 @@ contract Create is Script {
         vm.createDir("./deployments", true);
         string memory networkName = vm.envOr("NETWORK_NAME", string("local"));
         string memory filePath = string.concat(
-            vm.projectRoot(),
-            "/deployments/Create-",
-            networkName,
-            "-",
-            vm.toString(block.timestamp),
-            ".json"
+            vm.projectRoot(), "/deployments/Create-", networkName, "-", vm.toString(block.timestamp), ".json"
         );
         json.write(filePath);
 

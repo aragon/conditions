@@ -3,7 +3,8 @@ src = "src"
 out = "out"
 libs = ["lib"]
 
-# fs_permissions = [{ access = "read", path = "./script" }]
+# Allow forge scripts to write deployment artifacts
+fs_permissions = [{ access = "write", path = "./deployments" }]
 
 evm_version = "cancun"
 optimizer = true

@@ -2,9 +2,8 @@
 # Optional — if you don't use `vars`, populate `.env` from `.env.example` instead.
 
 keys:
-  - DEPLOYER_KEY
-  - ETHERSCAN_API_KEY
-  - REFUND_ADDRESS
-  # Project-specific (optional)
-  - DAO_ADDRESS
-  - SAFE_ADDRESS
+    - DEPLOYER_KEY
+    - ETHERSCAN_API_KEY
+    # Project-specific (optional)
+    # - DAO_ADDRESS
+    # - SAFE_ADDRESS

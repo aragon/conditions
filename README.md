@@ -15,8 +15,6 @@ This reposity contains a library of OSx conditions, meant to be used by any DAO 
 **Halborn**: [audit report](./audits/halborn-audit.pdf)
 
 - Commit ID: [df9320ab](https://github.com/aragon/conditions/commit/df9320ab843a5e4e41c4d7476c22d01b54ca4504)
-- Started: July 15th, 2025
-- Finished: July 15th, 2025
 
 ## Overview
 
@@ -28,7 +26,11 @@ This reposity contains a library of OSx conditions, meant to be used by any DAO 
 
 ## Get Started
 
-See the deployments available on each network on [DEPLOYMENTS.md](./DEPLOYMENTS.md)
+See the `ConditionFactory` address on each supported network in [npm-artifacts/src/addresses.json](./npm-artifacts/src/addresses.json), or install [`@aragon/condition-library-artifacts`](./npm-artifacts/README.md).
+
+## Releases
+
+The artifacts package is released by merging a PR that bumps `npm-artifacts/package.json#version`. CI tags and publishes automatically on merge — see [npm-artifacts/README.md](./npm-artifacts/README.md#releasing).
 
 ## Build
 
@@ -132,7 +134,7 @@ just create      # run Create.s.sol to instantiate conditions
 
 - [ ] The deployment process completed with no errors
 - [ ] The output of the latest `logs/Deploy-*.log` file corresponds to the console output
-- [ ] I have copied the `== Logs ==` section into [DEPLOYMENTS.md](./DEPLOYMENTS.md)
+- [ ] I have updated the relevant network entry in [`npm-artifacts/src/addresses.json`](./npm-artifacts/src/addresses.json) with the new factory address (the raw deployment receipt is at `deployments/Deploy-<network>-<ts>.json`)
 - [ ] I have uploaded the log file to a remote place
 - [ ] The factory contract was deployed by the deployment address
 - [ ] All the project's smart contracts are correctly verified on the reference block explorer of the target network.

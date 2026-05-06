@@ -1,0 +1,23 @@
+{
+  "lib/ens-contracts.git": {
+    "rev": "545a0104d0fbdd10865743e25729a921a76fd950"
+  },
+  "lib/forge-std": {
+    "rev": "3b20d60d14b343ee4f908cb8079495c07f5e8981"
+  },
+  "lib/just-foundry": {
+    "rev": "59d13ccf7fbd0ab49764e154d85ac1bb12b1b43e"
+  },
+  "lib/openzeppelin-contracts": {
+    "rev": "dc44c9f1a4c3b10af99492eed84f83ed244203f6"
+  },
+  "lib/openzeppelin-contracts-upgradeable": {
+    "rev": "2d081f24cac1a867f6f73d512f2022e1fa987854"
+  },
+  "lib/osx": {
+    "rev": "8398101839c717ad9e07ec6ecf26659e5cc1675e"
+  },
+  "lib/osx-commons": {
+    "rev": "98c2b9672d07377e4b429595d21c1803c19581db"
+  }
+}

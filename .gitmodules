@@ -16,3 +16,6 @@
 [submodule "lib/osx-commons"]
 	path = lib/osx-commons
 	url = https://github.com/aragon/osx-commons
+[submodule "lib/just-foundry"]
+	path = lib/just-foundry
+	url = https://github.com/aragon/just-foundry.git

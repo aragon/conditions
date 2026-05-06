@@ -8,7 +8,7 @@ This reposity contains a library of OSx conditions, meant to be used by any DAO 
 
 **Halborn**: [Safe owner condition](./audits/halborn-safe-owner.pdf)
 
-- Commit ID: [df9320ab](https://github.com/aragon/conditions/commit/12bfb3b3b60f91b99322248f6946090ab747b4b9)
+- Commit ID: [12bfb3b3](https://github.com/aragon/conditions/commit/12bfb3b3b60f91b99322248f6946090ab747b4b9)
 
 ### July 2025
 
@@ -32,157 +32,113 @@ See the deployments available on each network on [DEPLOYMENTS.md](./DEPLOYMENTS.
 
 ## Build
 
-To get started, ensure that [Foundry](https://getfoundry.sh/) and [Make](https://www.gnu.org/software/make/) are installed on your computer.
+Requirements: [Foundry](https://getfoundry.sh/) and [just](https://github.com/casey/just).
 
-### Using the Makefile
+The project uses [just-foundry](https://github.com/aragon/just-foundry), a thin task runner that resolves per-network config (RPC, chain ID, verifier, etc.) automatically. Initialize the submodules and pick a network:
 
-The `Makefile` is the target launcher of the project. It's the recommended way to work with it. It manages the env variables of common tasks and executes only the steps that need to be run.
-
-```
-$ make
-Available targets:
-
-- make help               Display the available targets
-
-- make init               Check the dependencies and prompt to install if needed
-- make clean              Clean the build artifacts
-
-- make test               Run unit tests, locally
-- make test-coverage      Generate an HTML coverage report under ./report
-
-- make sync-tests         Scaffold or sync tree files into solidity tests
-- make check-tests        Checks if solidity files are out of sync
-- make markdown-tests     Generates a markdown file with the test definitions rendered as a tree
-
-Deployment targets:
-
-- make predeploy          Simulate a factory deployment
-- make deploy             Deploy the factory and verify the source code
-
-- make precreate          Simulate running Create.s.sol
-- make create             Run Create.s.sol to create new condition instances
-
-Verification:
-
-- make verify-etherscan   Verify the last deployment on an Etherscan (compatible) explorer
-- make verify-blockscout  Verify the last deployment on BlockScout
-- make verify-sourcify    Verify the last deployment on Sourcify
-
-- make refund             Refund the remaining balance left on the deployment account
+```sh
+git submodule update --init --recursive
+just init sepolia
+cp .env.example .env   # then fill in DEPLOYER_KEY, ETHERSCAN_API_KEY, …
 ```
 
-Run `make init`:
-- It ensures that Foundry is installed
-- It runs a first compilation of the project
-- It copies `.env.example` into `.env`
+Run `just` (or `just help`) to list available recipes:
 
-Next, customize the values of `.env` and optionally `.env.test`.
+```
+[setup]
+init network="mainnet"     Initialize for a given network
+switch network override="" Select active network (pass "override" to fork the config locally)
+setup                      Install Foundry
 
-### Understanding `.env.example`
+[script]
+predeploy                  Simulate a factory deployment
+deploy *args               Run tests, deploy the factory, verify, log
+precreate                  Simulate Create.s.sol
+create *args               Run tests, instantiate conditions via Create.s.sol, verify, log
 
-The env.example file contains descriptions for all the initial settings. You don't need all of these right away but should review prior to fork tests and deployments
+[test]
+test *args                 Run unit tests
+test-fork *args            Run fork tests (requires RPC_URL)
+test-coverage              HTML coverage report under ./report
+
+[helpers]
+env                        Show resolved environment + sources
+balance                    Deployer wallet balance
+
+[develop]
+clean                      Clean compiler artifacts and reports
+anvil                      Local fork of the active network
+
+[verification]
+verify type="" script=""   Verify all contracts from the latest broadcast
+```
+
+Hidden helpers (run directly): `gas-price`, `nonce`, `clean-nonce <n>`, `clean-nonces "n1 n2 …"`, `refund`. See [`lib/just-foundry/README.md`](./lib/just-foundry/README.md).
+
+### Secrets
+
+Two options:
+
+1. Plain `.env` at the repo root (gitignored). Start from `.env.example`.
+2. **Recommended**: [`vars`](https://github.com/vars-cli/vars) — an age-encrypted local store that supplies secrets to every project automatically. Install with `just install-vars`. The required keys are listed in [`.vars.yaml`](./.vars.yaml).
+
+Network-level config (RPC URL, chain ID, verifier) lives in `lib/just-foundry/networks/<network>.env`. To customize a network locally without editing the submodule, run `just switch <network> override` and edit the resulting `.env.<network>` at the repo root.
 
 ## Deployment
 
-Check the available make targets to simulate and deploy the smart contracts:
+```sh
+just predeploy   # simulate
+just deploy      # run tests, broadcast, verify, write logs/Deploy-<network>-<ts>.log
 
-```
-- make predeploy          Simulate a factory deployment
-- make deploy             Deploy the factory and verify the source code
-
-- make precreate          Simulate running Create.s.sol
-- make create             Run Create.s.sol to create new condition instances
+just precreate   # simulate the Create script
+just create      # run Create.s.sol to instantiate conditions
 ```
 
 ### Deployment Checklist
 
 - [ ] I have cloned the official repository on my computer and I have checked out the corresponding branch
 - [ ] I am using the latest official docker engine, running a Debian Linux (stable) image
-  - [ ] I have run `docker run --rm -it -v .:/deployment debian:bookworm-slim`
-  - [ ] I have run `apt update && apt install -y make curl git vim neovim bc jq`
+  - [ ] I have run `docker run --rm -it -v .:/deployment debian:trixie-slim` (Debian 13 or newer)
+  - [ ] I have run `apt update && apt install -y curl git just vim neovim bc jq`
   - On **standard EVM networks**:
-    - [ ] I have run `curl -L https://foundry.paradigm.xyz | bash`
-    - [ ] I have run `source /root/.bashrc`
-    - [ ] I have run `foundryup`
+    - [ ] I have run `just setup` (installs Foundry)
   - On **ZkSync networks**:
-    - [ ] I have run `curl -L https://raw.githubusercontent.com/matter-labs/foundry-zksync/main/install-foundry-zksync | bash`
-    - [ ] I have run `source /root/.bashrc`
-    - [ ] I have run `foundryup-zksync`
+    - [ ] I have run `just setup-zksync`
   - [ ] I have run `cd /deployment`
-  - [ ] I have run `cp .env.example .env` (if not previously done)
-  - [ ] I have run `make init`
+  - [ ] I have run `git submodule update --init --recursive`
+  - [ ] I have run `just init <network>` (e.g. `just init sepolia`)
+  - [ ] I have run `cp .env.example .env` and filled in the secrets
 - [ ] I am opening an editor on the `/deployment` folder, within the Docker container
 - [ ] The `.env` file contains the correct parameters for the deployment
-  - [ ] I have created a brand new burner wallet with `cast wallet new` and copied the private key to `DEPLOYMENT_PRIVATE_KEY` within `.env`
-  - [ ] I have reviewed the target network and `RPC_URL`
-- [ ] All the tests run clean (`make test`)
+  - [ ] I have created a brand new burner wallet with `cast wallet new` and copied the private key to `DEPLOYER_KEY` within `.env`
+  - [ ] `just env` shows the expected network, verifier, and resolved secrets
+- [ ] All the tests run clean (`just test`)
 - [ ] My deployment wallet is a newly created account, ready for safe production deploys.
 - My computer:
   - [ ] Is running in a safe location and using a trusted network
   - [ ] It exposes no services or ports
   - [ ] The wifi or wired network in use does not expose any ports to a WAN
 - [ ] I have previewed my deploy without any errors
-  - `make predeploy`
+  - `just predeploy`
 - [ ] The deployment wallet has sufficient native token for gas
   - At least, 15% more than the estimated simulation
-- [ ] `make test` still run clean
+- [ ] `just test` still runs clean
 - [ ] I have run `git status` and it reports no local changes
 - [ ] The current local git branch (`main`) corresponds to its counterpart on `origin`
   - [ ] I confirm that the rest of members of the ceremony pulled the last commit of my branch and reported the same commit hash as my output for `git log -n 1`
-- [ ] I have initiated the production deployment with `make deploy`
+- [ ] I have initiated the production deployment with `just deploy`
 
 ### Post deployment checklist
 
 - [ ] The deployment process completed with no errors
-- [ ] The output of the latest `deployment-*.log` file corresponds to the console output
+- [ ] The output of the latest `logs/Deploy-*.log` file corresponds to the console output
 - [ ] I have copied the `== Logs ==` section into [DEPLOYMENTS.md](./DEPLOYMENTS.md)
 - [ ] I have uploaded the log file to a remote place
 - [ ] The factory contract was deployed by the deployment address
 - [ ] All the project's smart contracts are correctly verified on the reference block explorer of the target network.
   -  [ ] This also includes contracts that aren't explicitly deployed (deployed on demand)
 - [ ] I have transferred the remaining funds of the deployment wallet to the address that originally funded it
-  - `make refund`
-
-## Manual deployment (CLI)
-
-The equivalent commands can also be run from the command line:
-
-```sh
-# Load the env vars
-source .env
-```
-
-```sh
-# run unit tests
-forge test --no-match-path "test/fork/**/*.sol"
-```
-
-```sh
-# Set the right RPC URL
-RPC_URL="https://eth-sepolia.g.alchemy.com/v2/${ALCHEMY_API_KEY}"
-```
-
-```sh
-# Run the deployment script
-
-# If using Etherscan
-forge script --chain "$NETWORK" script/DeployGauges.s.sol:Deploy --rpc-url "$RPC_URL" --broadcast --verify
-
-# If using BlockScout
-forge script --chain "$NETWORK" script/DeployGauges.s.sol:Deploy --rpc-url "$RPC_URL" --broadcast --verify --verifier blockscout --verifier-url "https://sepolia.explorer.mode.network/api\?"
-```
-
-If you get the error Failed to get EIP-1559 fees, add `--legacy` to the command:
-
-```sh
-forge script --chain "$NETWORK" script/DeployGauges.s.sol:Deploy --rpc-url "$RPC_URL" --broadcast --verify --legacy
-```
-
-If some contracts fail to verify on Etherscan, retry with this command:
-
-```sh
-forge script --chain "$NETWORK" script/DeployGauges.s.sol:Deploy --rpc-url "$RPC_URL" --verify --legacy --private-key "$DEPLOYMENT_PRIVATE_KEY" --resume
-```
+  - `just refund`
 
 ## OSx protocol overview
 
@@ -233,72 +189,10 @@ See the condition contract boilerplate. It provides the plumbing to easily restr
 
 ## Testing
 
-See the [test tree](./TEST_TREE.md) file for a visual representation of the implemented tests.
-
-Tests can be described using yaml files. They will be automatically transformed into solidity test files with [bulloak](https://github.com/alexfertel/bulloak).
-
-Create a file with `.t.yaml` extension within the `test` folder and describe a hierarchy of test cases:
-
-```yaml
-# MyTest.t.yaml
-
-MyContractTest:
-- given: proposal exists
-  comment: Comment here
-  and:
-  - given: proposal is in the last stage
-    and:
-
-    - when: proposal can advance
-      then:
-      - it: Should return true
-
-    - when: proposal cannot advance
-      then:
-      - it: Should return false
-
-  - when: proposal is not in the last stage
-    then:
-    - it: should do A
-      comment: This is an important remark
-    - it: should do B
-    - it: should do C
-
-- when: proposal doesn't exist
-  comment: Testing edge cases here
-  then:
-  - it: should revert
-```
-
-Then use `make` to automatically sync the described branches into solidity test files.
-
 ```sh
-$ make
-Available targets:
-# ...
-- make sync-tests       Scaffold or sync tree files into solidity tests
-- make check-tests      Checks if solidity files are out of sync
-- make markdown-tests   Generates a markdown file with the test definitions rendered as a tree
-
-$ make sync-tests
+just test               # unit tests
+just test-fork          # fork tests (requires RPC_URL)
+just test-coverage      # HTML coverage report under ./report
 ```
 
-The final output will look like a human readable tree:
-
-```
-# MyTest.tree
-
-MyContractTest
-├── Given proposal exists // Comment here
-│   ├── Given proposal is in the last stage
-│   │   ├── When proposal can advance
-│   │   │   └── It Should return true
-│   │   └── When proposal cannot advance
-│   │       └── It Should return false
-│   └── When proposal is not in the last stage
-│       ├── It should do A // Careful here
-│       ├── It should do B
-│       └── It should do C
-└── When proposal doesn't exist // Testing edge cases here
-    └── It should revert
-```
+Test files live in [`./test`](./test). Add new test contracts directly in Solidity.

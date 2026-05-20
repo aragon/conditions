@@ -100,16 +100,16 @@ just create      # run Create.s.sol to instantiate conditions
 
 - [ ] I have cloned the official repository on my computer and I have checked out the corresponding branch
 - [ ] I am using the latest official docker engine, running a Debian Linux (stable) image
-  - [ ] I have run `docker run --rm -it -v .:/deployment debian:trixie-slim` (Debian 13 or newer)
-  - [ ] I have run `apt update && apt install -y curl git just vim neovim bc jq`
+  - [ ] I have run `docker run --rm -it -v .:/deployment --env-file  <(vars resolve --partial --dotenv 2>/dev/null) debian:trixie-slim`
+  - [ ] I have run `apt update && apt install -y --no-install-recommends just git vim bc jq curl ca-certificates`
+  - [ ] I have run `cd /deployment`
   - On **standard EVM networks**:
     - [ ] I have run `just setup` (installs Foundry)
   - On **ZkSync networks**:
     - [ ] I have run `just setup-zksync`
-  - [ ] I have run `cd /deployment`
   - [ ] I have run `git submodule update --init --recursive`
   - [ ] I have run `just init <network>` (e.g. `just init sepolia`)
-  - [ ] I have run `cp .env.example .env` and filled in the secrets
+  - [ ] I have run `cp .env.example .env` (if applicable)
 - [ ] I am opening an editor on the `/deployment` folder, within the Docker container
 - [ ] The `.env` file contains the correct parameters for the deployment
   - [ ] I have created a brand new burner wallet with `cast wallet new` and copied the private key to `DEPLOYER_KEY` within `.env`
@@ -129,6 +129,7 @@ just create      # run Create.s.sol to instantiate conditions
 - [ ] The current local git branch (`main`) corresponds to its counterpart on `origin`
   - [ ] I confirm that the rest of members of the ceremony pulled the last commit of my branch and reported the same commit hash as my output for `git log -n 1`
 - [ ] I have initiated the production deployment with `just deploy`
+- [ ] I have triggered a manual deployment + verification for each condition with `just create`
 
 ### Post deployment checklist
 

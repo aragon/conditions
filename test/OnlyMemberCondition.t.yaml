@@ -1,0 +1,22 @@
+OnlyMemberConditionTest:
+  - when: deploying the contract
+    then:
+      - given: an empty address
+        then:
+          - it: should revert
+      - given: a contract that does not implement IMembership
+        then:
+          - it: should revert
+      - it: should define the given target address
+  - when: calling isGranted
+    and:
+      - given: the given _who is not a member
+        then:
+          - it: should return false
+      - given: the given _who is a member
+        then:
+          - it: should return true
+  - when: calling supportsInterface
+    and:
+      - it: does not support the empty interface
+      - it: supports IPermissionCondition

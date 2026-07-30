@@ -12,3 +12,15 @@ function getSelector(bytes memory _data) pure returns (bytes4 selector) {
         selector := mload(add(_data, 0x20)) // 32
     }
 }
+
+/// @notice Strips the selector and returns remaining data.
+function stripSelector(bytes memory data) pure returns (bytes memory out) {
+    if (data.length < 4) revert("Data is too Short");
+
+    // Slices are only supported for bytes calldata, not bytes memory
+    // Bytes memory requires an assembly block
+    assembly ("memory-safe") {
+        out := add(data, 4) // move header 4 bytes forward
+        mstore(out, sub(mload(data), 4)) // write the new, shorter length
+    }
+}

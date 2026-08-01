@@ -16,10 +16,10 @@ contract ConditionFactory {
     event SelectorConditionDeployed(SelectorCondition newContract);
     event SafeOwnerConditionDeployed(SafeOwnerCondition newContract);
 
-    function deployExecuteSelectorCondition(
-        IDAO _dao,
-        ExecuteSelectorCondition.SelectorTarget[] memory _initialEntries
-    ) public returns (ExecuteSelectorCondition newContract) {
+    function deployExecuteSelectorCondition(IDAO _dao, ExecuteSelectorCondition.SelectorTarget[] memory _initialEntries)
+        public
+        returns (ExecuteSelectorCondition newContract)
+    {
         newContract = new ExecuteSelectorCondition(_dao, _initialEntries);
         emit ExecuteSelectorConditionDeployed(newContract);
     }

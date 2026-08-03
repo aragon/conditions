@@ -69,8 +69,9 @@ contract ExecuteSelectorCrossChainConditionTest is AragonTest {
         builder = new DaoBuilder();
         (dao,,,) = builder.build();
 
+        uint256[] memory emptyChainIds;
         ExecuteSelectorCrossChainCondition.SelectorTarget[] memory emptyEntries;
-        condition = new ExecuteSelectorCrossChainCondition(IDAO(address(dao)), emptyEntries);
+        condition = new ExecuteSelectorCrossChainCondition(IDAO(address(dao)), emptyChainIds, emptyEntries);
         ccc = new MockCrossChainController();
 
         // The test contract manages the allowlists directly
@@ -131,27 +132,79 @@ contract ExecuteSelectorCrossChainConditionTest is AragonTest {
         // It should set the given DAO address
         assertEq(address(condition.dao()), address(dao));
 
-        // It should register the initial entries under the current chain id
+        // It should register each entry under the chain id given at the same index
+        uint256[] memory chainIds = new uint256[](2);
+        chainIds[0] = block.chainid;
+        chainIds[1] = DST_CHAIN_ID;
+
         ExecuteSelectorCrossChainCondition.SelectorTarget[] memory initialEntries =
             new ExecuteSelectorCrossChainCondition.SelectorTarget[](2);
         initialEntries[0].where = address(dao);
         initialEntries[0].selectors = new bytes4[](2);
         initialEntries[0].selectors[0] = DUMMY_SELECTOR_1;
         initialEntries[0].selectors[1] = DUMMY_SELECTOR_2;
-        initialEntries[1].where = address(this);
+        initialEntries[1].where = remoteContract;
         initialEntries[1].selectors = new bytes4[](1);
-        initialEntries[1].selectors[0] = DUMMY_SELECTOR_1;
+        initialEntries[1].selectors[0] = REMOTE_SELECTOR;
 
         ExecuteSelectorCrossChainCondition newCondition =
-            new ExecuteSelectorCrossChainCondition(IDAO(address(dao)), initialEntries);
+            new ExecuteSelectorCrossChainCondition(IDAO(address(dao)), chainIds, initialEntries);
 
+        // The local entry lands on the current chain
         assertTrue(newCondition.allowedSelectors(block.chainid, address(dao), DUMMY_SELECTOR_1));
         assertTrue(newCondition.allowedSelectors(block.chainid, address(dao), DUMMY_SELECTOR_2));
-        assertTrue(newCondition.allowedSelectors(block.chainid, address(this), DUMMY_SELECTOR_1));
-        assertFalse(newCondition.allowedSelectors(block.chainid, address(this), DUMMY_SELECTOR_2));
 
-        // It should not register anything under other chain ids
+        // The remote entry lands on the destination chain
+        assertTrue(newCondition.allowedSelectors(DST_CHAIN_ID, remoteContract, REMOTE_SELECTOR));
+
+        // Neither entry leaks onto the other chain
         assertFalse(newCondition.allowedSelectors(DST_CHAIN_ID, address(dao), DUMMY_SELECTOR_1));
+        assertFalse(newCondition.allowedSelectors(block.chainid, remoteContract, REMOTE_SELECTOR));
+    }
+
+    function test_RevertWhen_AllowingOnChainIdZero() external {
+        // A zero chain id is never valid: `dstChainId` is decoded from the proposal itself,
+        // so an entry stored under chain 0 could be targeted by a crafted forwardMessage()
+        vm.expectRevert(ExecuteSelectorCrossChainCondition.InvalidChainId.selector);
+        condition.allowSelectors(0, _entry(remoteContract, REMOTE_SELECTOR));
+
+        vm.expectRevert(ExecuteSelectorCrossChainCondition.InvalidChainId.selector);
+        condition.allowNativeTransfers(0, remoteContract);
+
+        // It should also reject a zero chain id at construction time
+        uint256[] memory chainIds = new uint256[](1); // defaults to 0
+        ExecuteSelectorCrossChainCondition.SelectorTarget[] memory initialEntries =
+            new ExecuteSelectorCrossChainCondition.SelectorTarget[](1);
+        initialEntries[0].where = remoteContract;
+        initialEntries[0].selectors = new bytes4[](1);
+        initialEntries[0].selectors[0] = REMOTE_SELECTOR;
+
+        vm.expectRevert(ExecuteSelectorCrossChainCondition.InvalidChainId.selector);
+        new ExecuteSelectorCrossChainCondition(IDAO(address(dao)), chainIds, initialEntries);
+
+        // Disallowing on chain zero stays a harmless no-op
+        condition.disallowSelectors(0, _entry(remoteContract, REMOTE_SELECTOR));
+        condition.disallowNativeTransfers(0, remoteContract);
+    }
+
+    function test_RevertWhen_DeployingWithMismatchedChainIds() external {
+        // It should revert when the chain ids and the entries have a different length
+        uint256[] memory chainIds = new uint256[](1);
+        chainIds[0] = block.chainid;
+
+        ExecuteSelectorCrossChainCondition.SelectorTarget[] memory initialEntries =
+            new ExecuteSelectorCrossChainCondition.SelectorTarget[](2);
+        initialEntries[0].where = address(dao);
+        initialEntries[0].selectors = new bytes4[](1);
+        initialEntries[0].selectors[0] = DUMMY_SELECTOR_1;
+        initialEntries[1].where = remoteContract;
+        initialEntries[1].selectors = new bytes4[](1);
+        initialEntries[1].selectors[0] = REMOTE_SELECTOR;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(ExecuteSelectorCrossChainCondition.ChainIdsLengthMismatch.selector, 1, 2)
+        );
+        new ExecuteSelectorCrossChainCondition(IDAO(address(dao)), chainIds, initialEntries);
     }
 
     // allowSelectors / disallowSelectors

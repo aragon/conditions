@@ -9,5 +9,5 @@ fs_permissions = [{ access = "write", path = "./deployments" }]
 evm_version = "cancun"
 optimizer = true
 optimizer-runs = 200
-solc = "0.8.23"
+solc = "0.8.25"
 via_ir = false

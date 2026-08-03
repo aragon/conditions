@@ -3,6 +3,7 @@ pragma solidity ^0.8.22;
 
 import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
 import {ExecuteSelectorCondition} from "../ExecuteSelectorCondition.sol";
+import {ExecuteSelectorCrossChainCondition} from "../ExecuteSelectorCrossChainCondition.sol";
 import {SelectorCondition} from "../SelectorCondition.sol";
 import {SafeOwnerCondition, IOwnerManager} from "../SafeOwnerCondition.sol";
 
@@ -11,6 +12,7 @@ import {SafeOwnerCondition, IOwnerManager} from "../SafeOwnerCondition.sol";
 /// @notice A factory used to deploy new condition instances
 contract ConditionFactory {
     event ExecuteSelectorConditionDeployed(ExecuteSelectorCondition newContract);
+    event ExecuteSelectorCrossChainConditionDeployed(ExecuteSelectorCrossChainCondition newContract);
     event SelectorConditionDeployed(SelectorCondition newContract);
     event SafeOwnerConditionDeployed(SafeOwnerCondition newContract);
 
@@ -20,6 +22,15 @@ contract ConditionFactory {
     {
         newContract = new ExecuteSelectorCondition(_dao, _initialEntries);
         emit ExecuteSelectorConditionDeployed(newContract);
+    }
+
+    function deployExecuteSelectorCrossChainCondition(
+        IDAO _dao,
+        uint256[] memory _chainIds,
+        ExecuteSelectorCrossChainCondition.SelectorTarget[] memory _initialEntries
+    ) public returns (ExecuteSelectorCrossChainCondition newContract) {
+        newContract = new ExecuteSelectorCrossChainCondition(_dao, _chainIds, _initialEntries);
+        emit ExecuteSelectorCrossChainConditionDeployed(newContract);
     }
 
     function deploySelectorCondition(IDAO _dao, bytes4[] memory _initialSelectors)

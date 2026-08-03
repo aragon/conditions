@@ -23,7 +23,7 @@ interface ICrossChainController {
 }
 
 /// @title ExecuteSelectorCrossChainCondition
-/// @author AragonX 2025
+/// @author AragonX 2026
 /// @notice A permission condition that restricts which function selectors (and native transfers) can be invoked
 ///         through DAO.execute(), with allowlists scoped per chain — covering both actions executed locally and
 ///         actions relayed to other chains through a CrossChainController.
@@ -89,12 +89,24 @@ contract ExecuteSelectorCrossChainCondition is ERC165, IPermissionCondition, Dao
     /// @param where The address to which native transfers are no longer allowed
     event NativeTransfersDisallowed(uint256 chainId, address where);
 
+    /// @notice Thrown when the given chain id's and selector entries have a different length
+    error ChainIdsLengthMismatch(uint256 chainIds, uint256 entries);
+
+    /// @notice Thrown when attempting to allow something on the chain id zero, which is not a valid chain
+    error InvalidChainId();
+
     /// @notice Configures a new instance with the given set of allowed selectors
     /// @param _dao The address of the DAO where the contract should read the permissions from
+    /// @param _chainIds The chain on which each of the entries below applies, matched by index.
+    ///        Pass `block.chainid` for the entries that apply to the current chain.
     /// @param _initialEntries The list of allowed selectors and the addresses where they can be invoked
-    constructor(IDAO _dao, SelectorTarget[] memory _initialEntries) DaoAuthorizable(_dao) {
+    constructor(IDAO _dao, uint256[] memory _chainIds, SelectorTarget[] memory _initialEntries) DaoAuthorizable(_dao) {
+        if (_chainIds.length != _initialEntries.length) {
+            revert ChainIdsLengthMismatch(_chainIds.length, _initialEntries.length);
+        }
+
         for (uint256 i; i < _initialEntries.length; i++) {
-            _allowSelectors(block.chainid, _initialEntries[i]);
+            _allowSelectors(_chainIds[i], _initialEntries[i]);
         }
     }
 
@@ -208,7 +220,7 @@ contract ExecuteSelectorCrossChainCondition is ERC165, IPermissionCondition, Dao
                 return false;
             }
 
-            (uint256 dstChainId,, bytes memory message) =
+            (uint256 dstChainId,/* uint256 gasLimit */, bytes memory message) =
                 abi.decode(stripSelector(_actions[i].data), (uint256, uint256, bytes));
 
             Action[] memory innerActions = abi.decode(message, (Action[]));
@@ -250,6 +262,8 @@ contract ExecuteSelectorCrossChainCondition is ERC165, IPermissionCondition, Dao
     // Internal helpers
 
     function _allowSelectors(uint256 _chainId, SelectorTarget memory _newEntry) internal virtual {
+        if (_chainId == 0) revert InvalidChainId();
+
         for (uint256 i; i < _newEntry.selectors.length; i++) {
             if (allowedSelectors[_chainId][_newEntry.where][_newEntry.selectors[i]]) {
                 // The requested state is already in place
@@ -272,6 +286,8 @@ contract ExecuteSelectorCrossChainCondition is ERC165, IPermissionCondition, Dao
     }
 
     function _allowNativeTransfers(uint256 _chainId, address _where) internal virtual {
+        if (_chainId == 0) revert InvalidChainId();
+
         allowedNativeTransfers[_chainId][_where] = true;
         emit NativeTransfersAllowed(_chainId, _where);
     }

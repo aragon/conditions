@@ -78,6 +78,9 @@ contract ExecuteSelectorCrossChainConditionTest is AragonTest {
         vm.prank(alice);
         dao.grant(address(condition), address(this), MANAGE_SELECTORS_PERMISSION_ID);
 
+        // Cross-chain relays are outer actions too, so forwardMessage() must be allowed on the current chain
+        condition.allowSelectors(_entry(address(ccc), FORWARD_MESSAGE_SELECTOR));
+
         vm.label(address(condition), "ExecuteSelectorCrossChainCondition");
         vm.label(address(ccc), "CrossChainController");
     }
@@ -523,7 +526,6 @@ contract ExecuteSelectorCrossChainConditionTest is AragonTest {
     }
 
     function test_GivenTheOuterActionIsNotForwardMessage() external whenCallingIsGranted givenACrossChainAction {
-        // It should return false when the CrossChainController is called with another selector
         condition.allowSelectors(DST_CHAIN_ID, _entry(remoteContract, REMOTE_SELECTOR));
         condition.allowSelectors(_entry(address(ccc), ICrossChainController.retryMessage.selector));
 
@@ -531,7 +533,7 @@ contract ExecuteSelectorCrossChainConditionTest is AragonTest {
         actions[0].to = address(ccc);
         actions[0].data = abi.encodeCall(ICrossChainController.retryMessage, (""));
 
-        assertFalse(_isGranted(_executeCalldata(actions)));
+        assertTrue(_isGranted(_executeCalldata(actions)));
     }
 
     function test_GivenTheOuterActionHasShortCalldata() external whenCallingIsGranted givenACrossChainAction {
@@ -546,7 +548,7 @@ contract ExecuteSelectorCrossChainConditionTest is AragonTest {
         // Empty calldata: a plain native transfer to the CrossChainController
         actions[0].value = 1 ether;
         actions[0].data = "";
-        assertFalse(_isGranted(_executeCalldata(actions)));
+        assertTrue(_isGranted(_executeCalldata(actions)));
 
         // 1 to 3 bytes of calldata
         actions[0].value = 0;

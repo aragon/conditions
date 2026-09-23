@@ -203,41 +203,24 @@ contract ExecuteSelectorCrossChainCondition is ERC165, IPermissionCondition, Dao
         (, Action[] memory _actions,) = abi.decode(_data[4:], (bytes32, Action[], uint256));
 
         for (uint256 i = 0; i < _actions.length; i++) {
-            // NOT CrossChain: check whether selector on same chain is supported.
-            if (!_actions[i].to.supportsInterface(type(ICrossChainController).interfaceId)) {
-                if (!_isActionAllowed(block.chainid, _actions[i])) return false;
-                continue;
-            }
+            if (!_isActionAllowed(block.chainid, _actions[i])) return false;
 
-            // CrossChain:
-            // Check that `_actions[i].data` is at least length of 4
-            // so selector can be decoded without revert.
-            if (_actions[i].data.length < 4) return false;
+            if (
+                _actions[i].data.length >= 4
+                    && getSelector(_actions[i].data) == ICrossChainController.forwardMessage.selector
+            ) {
+                (uint256 dstChainId,/* uint256 gasLimit */, bytes memory message) =
+                    abi.decode(stripSelector(_actions[i].data), (uint256, uint256, bytes));
 
-            // Before decoding, check that action is calling forwardMessage on CrossChainController.
-            if (getSelector(_actions[i].data) != ICrossChainController.forwardMessage.selector) {
-                // Only allow if selector is forwardMessage on CrossChainController
-                return false;
-            }
+                Action[] memory innerActions = abi.decode(message, (Action[]));
 
-            // Aragon's current CrossChainController.forwardMessage is non-payable, so a non-zero
-            // value would revert anyway. As a safeguard for future controllers that may be payable,
-            // require the target to be whitelisted for native transfers when value > 0.
-            if (_actions[i].value != 0 && !allowedNativeTransfers[block.chainid][_actions[i].to]) {
-                return false;
-            }
+                // Reject empty cross-chain messages: they execute nothing on the destination chain,
+                // yet still pass the allowlist check trivially and incur bridging/gas costs.
+                if (innerActions.length == 0) return false;
 
-            (uint256 dstChainId,/* uint256 gasLimit */, bytes memory message) =
-                abi.decode(stripSelector(_actions[i].data), (uint256, uint256, bytes));
-
-            Action[] memory innerActions = abi.decode(message, (Action[]));
-
-            // Reject empty cross-chain messages: they execute nothing on the destination chain,
-            // yet still pass the allowlist check trivially and incur bridging/gas costs.
-            if (innerActions.length == 0) return false;
-
-            for (uint256 j = 0; j < innerActions.length; j++) {
-                if (!_isActionAllowed(dstChainId, innerActions[j])) return false;
+                for (uint256 j = 0; j < innerActions.length; j++) {
+                    if (!_isActionAllowed(dstChainId, innerActions[j])) return false;
+                }
             }
         }
 

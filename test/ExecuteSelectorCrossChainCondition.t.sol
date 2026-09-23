@@ -560,6 +560,27 @@ contract ExecuteSelectorCrossChainConditionTest is AragonTest {
         assertFalse(_isGranted(_executeCalldata(actions)));
     }
 
+    function test_GivenTheOuterActionHasValue() external whenCallingIsGranted givenACrossChainAction {
+        // Value attached to forwardMessage() is paid by the DAO on the current chain, so the
+        // CrossChainController must be allowed to receive native transfers here
+        condition.allowSelectors(DST_CHAIN_ID, _entry(remoteContract, REMOTE_SELECTOR));
+
+        Action[] memory actions = new Action[](1);
+        actions[0] = _crossChainAction(DST_CHAIN_ID, _remoteCall(0));
+        actions[0].value = 1 ether;
+
+        // It should return false while native transfers to the CrossChainController are not allowed
+        assertFalse(_isGranted(_executeCalldata(actions)));
+
+        // Allowing native transfers on the destination chain must not help
+        condition.allowNativeTransfers(DST_CHAIN_ID, address(ccc));
+        assertFalse(_isGranted(_executeCalldata(actions)));
+
+        // It should return true once native transfers are allowed on the current chain
+        condition.allowNativeTransfers(address(ccc));
+        assertTrue(_isGranted(_executeCalldata(actions)));
+    }
+
     function test_GivenAnInnerActionWithValue() external whenCallingIsGranted givenACrossChainAction {
         // The value is paid out of the destination chain executor's balance, so the
         // destination chain's native transfer allowance is what must be granted here
@@ -638,13 +659,13 @@ contract ExecuteSelectorCrossChainConditionTest is AragonTest {
     }
 
     function test_GivenAnEmptyInnerActionsArray() external view whenCallingIsGranted givenACrossChainAction {
-        // It should return true: there is nothing to disallow
+        // It should return false: an empty message executes nothing on the destination chain
         Action[] memory innerActions;
 
         Action[] memory actions = new Action[](1);
         actions[0] = _crossChainAction(DST_CHAIN_ID, innerActions);
 
-        assertTrue(_isGranted(_executeCalldata(actions)));
+        assertFalse(_isGranted(_executeCalldata(actions)));
     }
 
     function test_GivenAMixedBatchOfLocalAndCrossChainActions() external whenCallingIsGranted {

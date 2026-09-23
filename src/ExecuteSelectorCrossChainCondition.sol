@@ -3,7 +3,6 @@
 pragma solidity ^0.8.22;
 
 import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
-import {ERC165Checker} from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import {DaoAuthorizable} from "@aragon/osx-commons-contracts/src/permission/auth/DaoAuthorizable.sol";
 import {IPermissionCondition} from "@aragon/osx-commons-contracts/src/permission/condition/IPermissionCondition.sol";
 import {IDAO} from "@aragon/osx-commons-contracts/src/dao/IDAO.sol";
@@ -29,12 +28,15 @@ interface ICrossChainController {
 ///         actions relayed to other chains through a CrossChainController.
 /// @dev How it works:
 ///      - The condition intercepts calls to `execute()` and inspects each action in the batch.
-///      - If an action's target does NOT support the `ICrossChainController` interface (checked via ERC-165),
-///        it is a local action: its selector (or native transfer) must be allowed for `(block.chainid, target)`.
-///      - If the target IS a CrossChainController, the action is a cross-chain relay: its calldata is decoded as
-///        a `forwardMessage(destinationChainId, gasLimit, message)` payload, where `message` encodes the `Action[]`
-///        to be executed on the destination chain. Each of those inner actions must then be allowed for
-///        `(destinationChainId, innerTarget)`.
+///      - Every action must be allowed for `(block.chainid, target)`: its selector (or native transfer), and a
+///        native transfer allowance when it carries `value`. This includes calls to a CrossChainController, so
+///        `forwardMessage` must be allowed on each controller the DAO relays through.
+///      - If an action calls `forwardMessage`, it is a cross-chain relay whatever its target: its calldata is
+///        decoded as a `forwardMessage(destinationChainId, gasLimit, message)` payload, where `message` encodes the
+///        `Action[]` to be executed on the destination chain. Each of those inner actions must then be allowed for
+///        `(destinationChainId, innerTarget)`. Empty messages are rejected.
+///      - Inner actions are not decoded recursively: allowing `forwardMessage` on a destination chain lets that
+///        message relay any actions onwards.
 ///      - Note on `value` for cross-chain actions: an inner action with a non-zero `value` is executed on the
 ///        destination chain, and the native tokens are paid out of the destination chain executor's balance —
 ///        not from the DAO on this chain. Therefore the current chain must also decide, via
@@ -46,14 +48,12 @@ interface ICrossChainController {
 ///      - This lets a DAO on one chain constrain not only what its proposals can call locally, but also what
 ///        they can trigger remotely on every destination chain it bridges to.
 contract ExecuteSelectorCrossChainCondition is ERC165, IPermissionCondition, DaoAuthorizable {
-    using ERC165Checker for address;
-
     /// @notice Contains a list of selectors for the given target (where) address
     struct SelectorTarget {
         /// @notice The address where the selectors below can be invoked
         address where;
         /// @notice The list of function selectors that can be invoked within an execute() call.
-        /// @notice Plain native transfers should contain 0 as the selector.
+        /// @notice Plain native transfers are allowed via `allowNativeTransfers` instead.
         bytes4[] selectors;
     }
 
@@ -203,30 +203,24 @@ contract ExecuteSelectorCrossChainCondition is ERC165, IPermissionCondition, Dao
         (, Action[] memory _actions,) = abi.decode(_data[4:], (bytes32, Action[], uint256));
 
         for (uint256 i = 0; i < _actions.length; i++) {
-            // NOT CrossChain: check whether selector on same chain is supported.
-            if (!_actions[i].to.supportsInterface(type(ICrossChainController).interfaceId)) {
-                if (!_isActionAllowed(block.chainid, _actions[i])) return false;
-                continue;
-            }
+            if (!_isActionAllowed(block.chainid, _actions[i])) return false;
 
-            // CrossChain:
-            // Check that `_actions[i].data` is at least length of 4
-            // so selector can be decoded without revert.
-            if (_actions[i].data.length < 4) return false;
+            if (
+                _actions[i].data.length >= 4
+                    && getSelector(_actions[i].data) == ICrossChainController.forwardMessage.selector
+            ) {
+                (uint256 dstChainId,/* uint256 gasLimit */, bytes memory message) =
+                    abi.decode(stripSelector(_actions[i].data), (uint256, uint256, bytes));
 
-            // Before decoding, check that action is calling forwardMessage on CrossChainController.
-            if (getSelector(_actions[i].data) != ICrossChainController.forwardMessage.selector) {
-                // Only allow if selector is forwardMessage on CrossChainController
-                return false;
-            }
+                Action[] memory innerActions = abi.decode(message, (Action[]));
 
-            (uint256 dstChainId,/* uint256 gasLimit */, bytes memory message) =
-                abi.decode(stripSelector(_actions[i].data), (uint256, uint256, bytes));
+                // Reject empty cross-chain messages: they execute nothing on the destination chain,
+                // yet still pass the allowlist check trivially and incur bridging/gas costs.
+                if (innerActions.length == 0) return false;
 
-            Action[] memory innerActions = abi.decode(message, (Action[]));
-
-            for (uint256 j = 0; j < innerActions.length; j++) {
-                if (!_isActionAllowed(dstChainId, innerActions[j])) return false;
+                for (uint256 j = 0; j < innerActions.length; j++) {
+                    if (!_isActionAllowed(dstChainId, innerActions[j])) return false;
+                }
             }
         }
 

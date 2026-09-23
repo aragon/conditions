@@ -78,6 +78,9 @@ contract ExecuteSelectorCrossChainConditionTest is AragonTest {
         vm.prank(alice);
         dao.grant(address(condition), address(this), MANAGE_SELECTORS_PERMISSION_ID);
 
+        // Cross-chain relays are outer actions too, so forwardMessage() must be allowed on the current chain
+        condition.allowSelectors(_entry(address(ccc), FORWARD_MESSAGE_SELECTOR));
+
         vm.label(address(condition), "ExecuteSelectorCrossChainCondition");
         vm.label(address(ccc), "CrossChainController");
     }
@@ -522,8 +525,51 @@ contract ExecuteSelectorCrossChainConditionTest is AragonTest {
         assertFalse(_isGranted(_executeCalldata(actions)));
     }
 
+    function test_GivenTheCrossChainControllerIsNotAllowed() external whenCallingIsGranted givenACrossChainAction {
+        condition.allowSelectors(DST_CHAIN_ID, _entry(remoteContract, REMOTE_SELECTOR));
+
+        Action[] memory actions = new Action[](1);
+        actions[0] = _crossChainAction(DST_CHAIN_ID, _remoteCall(0));
+        assertTrue(_isGranted(_executeCalldata(actions)));
+
+        // It should return false once forwardMessage() is disallowed on the CrossChainController
+        condition.disallowSelectors(_entry(address(ccc), FORWARD_MESSAGE_SELECTOR));
+        assertFalse(_isGranted(_executeCalldata(actions)));
+    }
+
+    function test_GivenAnUnlistedCrossChainController() external whenCallingIsGranted givenACrossChainAction {
+        // It should return false: advertising ICrossChainController via ERC-165 is not enough
+        condition.allowSelectors(DST_CHAIN_ID, _entry(remoteContract, REMOTE_SELECTOR));
+        MockCrossChainController unlistedCcc = new MockCrossChainController();
+
+        Action[] memory actions = new Action[](1);
+        actions[0] = _crossChainAction(DST_CHAIN_ID, _remoteCall(0));
+        actions[0].to = address(unlistedCcc);
+
+        assertFalse(_isGranted(_executeCalldata(actions)));
+    }
+
+    function test_GivenForwardMessageOnATargetThatIsNotACrossChainController()
+        external
+        whenCallingIsGranted
+        givenACrossChainAction
+    {
+        // The message is decoded based on the selector, whatever the target is
+        condition.allowSelectors(_entry(remoteTarget, FORWARD_MESSAGE_SELECTOR));
+
+        Action[] memory actions = new Action[](1);
+        actions[0] = _crossChainAction(DST_CHAIN_ID, _remoteCall(0));
+        actions[0].to = remoteTarget;
+
+        // It should return false while the inner action is not allowed on the destination chain
+        assertFalse(_isGranted(_executeCalldata(actions)));
+
+        // It should return true once the inner action is allowed on the destination chain
+        condition.allowSelectors(DST_CHAIN_ID, _entry(remoteContract, REMOTE_SELECTOR));
+        assertTrue(_isGranted(_executeCalldata(actions)));
+    }
+
     function test_GivenTheOuterActionIsNotForwardMessage() external whenCallingIsGranted givenACrossChainAction {
-        // It should return false when the CrossChainController is called with another selector
         condition.allowSelectors(DST_CHAIN_ID, _entry(remoteContract, REMOTE_SELECTOR));
         condition.allowSelectors(_entry(address(ccc), ICrossChainController.retryMessage.selector));
 
@@ -531,13 +577,12 @@ contract ExecuteSelectorCrossChainConditionTest is AragonTest {
         actions[0].to = address(ccc);
         actions[0].data = abi.encodeCall(ICrossChainController.retryMessage, (""));
 
-        assertFalse(_isGranted(_executeCalldata(actions)));
+        assertTrue(_isGranted(_executeCalldata(actions)));
     }
 
     function test_GivenTheOuterActionHasShortCalldata() external whenCallingIsGranted givenACrossChainAction {
-        // The target is a CrossChainController, so the local branch is skipped and the
-        // selector is read before any length guard. Anything shorter than 4 bytes has no
-        // selector to compare, so it cannot be a forwardMessage() call.
+        // The CrossChainController is checked like any other target: empty calldata is a native
+        // transfer, and anything else shorter than 4 bytes has no selector, so it is rejected.
         condition.allowNativeTransfers(address(ccc));
 
         Action[] memory actions = new Action[](1);
@@ -546,7 +591,7 @@ contract ExecuteSelectorCrossChainConditionTest is AragonTest {
         // Empty calldata: a plain native transfer to the CrossChainController
         actions[0].value = 1 ether;
         actions[0].data = "";
-        assertFalse(_isGranted(_executeCalldata(actions)));
+        assertTrue(_isGranted(_executeCalldata(actions)));
 
         // 1 to 3 bytes of calldata
         actions[0].value = 0;
@@ -557,6 +602,31 @@ contract ExecuteSelectorCrossChainConditionTest is AragonTest {
         assertFalse(_isGranted(_executeCalldata(actions)));
 
         actions[0].data = hex"aabbcc";
+        assertFalse(_isGranted(_executeCalldata(actions)));
+    }
+
+    function test_GivenTheOuterActionHasValue() external whenCallingIsGranted givenACrossChainAction {
+        // Value attached to forwardMessage() is paid by the DAO on the current chain, so the
+        // CrossChainController must be allowed to receive native transfers here
+        condition.allowSelectors(DST_CHAIN_ID, _entry(remoteContract, REMOTE_SELECTOR));
+
+        Action[] memory actions = new Action[](1);
+        actions[0] = _crossChainAction(DST_CHAIN_ID, _remoteCall(0));
+        actions[0].value = 1 ether;
+
+        // It should return false while native transfers to the CrossChainController are not allowed
+        assertFalse(_isGranted(_executeCalldata(actions)));
+
+        // Allowing native transfers on the destination chain must not help
+        condition.allowNativeTransfers(DST_CHAIN_ID, address(ccc));
+        assertFalse(_isGranted(_executeCalldata(actions)));
+
+        // It should return true once native transfers are allowed on the current chain
+        condition.allowNativeTransfers(address(ccc));
+        assertTrue(_isGranted(_executeCalldata(actions)));
+
+        // It should return false when native transfers are allowed but forwardMessage() is not
+        condition.disallowSelectors(_entry(address(ccc), FORWARD_MESSAGE_SELECTOR));
         assertFalse(_isGranted(_executeCalldata(actions)));
     }
 
@@ -638,13 +708,13 @@ contract ExecuteSelectorCrossChainConditionTest is AragonTest {
     }
 
     function test_GivenAnEmptyInnerActionsArray() external view whenCallingIsGranted givenACrossChainAction {
-        // It should return true: there is nothing to disallow
+        // It should return false: an empty message executes nothing on the destination chain
         Action[] memory innerActions;
 
         Action[] memory actions = new Action[](1);
         actions[0] = _crossChainAction(DST_CHAIN_ID, innerActions);
 
-        assertTrue(_isGranted(_executeCalldata(actions)));
+        assertFalse(_isGranted(_executeCalldata(actions)));
     }
 
     function test_GivenAMixedBatchOfLocalAndCrossChainActions() external whenCallingIsGranted {

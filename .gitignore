@@ -21,7 +21,3 @@ logs/*
 
 # Per-deployment artifact outputs
 deployments/
-
-# npm-artifacts package
-npm-artifacts/node_modules
-npm-artifacts/dist

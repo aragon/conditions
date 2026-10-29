@@ -26,11 +26,7 @@ This reposity contains a library of OSx conditions, meant to be used by any DAO 
 
 ## Get Started
 
-See the `ConditionFactory` address on each supported network in [npm-artifacts/src/addresses.json](./npm-artifacts/src/addresses.json), or install [`@aragon/condition-library-artifacts`](./npm-artifacts/README.md).
-
-## Releases
-
-The artifacts package is released by merging a PR that bumps `npm-artifacts/package.json#version`. CI tags and publishes automatically on merge — see [npm-artifacts/README.md](./npm-artifacts/README.md#releasing).
+See the `ConditionFactory` address on each supported network, and the contract ABIs, in [aragon/artifacts-hub](https://github.com/aragon/artifacts-hub).
 
 ## Build
 
@@ -135,7 +131,7 @@ just create      # run Create.s.sol to instantiate conditions
 
 - [ ] The deployment process completed with no errors
 - [ ] The output of the latest `logs/Deploy-*.log` file corresponds to the console output
-- [ ] I have updated the relevant network entry in [`npm-artifacts/src/addresses.json`](./npm-artifacts/src/addresses.json) with the new factory address (the raw deployment receipt is at `deployments/Deploy-<network>-<ts>.json`)
+- [ ] I have added the new factory address to [aragon/artifacts-hub](https://github.com/aragon/artifacts-hub) (the raw deployment receipt is at `deployments/Deploy-<network>-<ts>.json`)
 - [ ] I have uploaded the log file to a remote place
 - [ ] The factory contract was deployed by the deployment address
 - [ ] All the project's smart contracts are correctly verified on the reference block explorer of the target network.
@@ -169,7 +165,7 @@ function revoke(address _where, address _who, bytes32 _permissionId);
 
 ### Permission Conditions
 
-For the cases where an unrestricted permission is not derisable, a [Permission Condition](https://devs.aragon.org/osx/how-it-works/core/permissions/conditions) can be used.
+For the cases where an unrestricted permission is not derisable, a [Permission Condition](https://docs.aragon.org/common/permission-conditions) can be used.
 
 Conditional permissions look like this:
 
@@ -188,7 +184,7 @@ function grantWithCondition(
 
 See the condition contract boilerplate. It provides the plumbing to easily restrict what the different multisig plugins can propose on the OptimisticVotingPlugin.
 
-[Learn more about OSx permissions](https://devs.aragon.org/osx/how-it-works/core/permissions/#permissions)
+[Learn more about OSx permissions](https://docs.aragon.org/core/permissions)
 
 ## Testing
 

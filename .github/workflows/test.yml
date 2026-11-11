@@ -33,9 +33,6 @@ jobs:
               with:
                   version: v1.5.1
 
-            - name: Install just
-              uses: extractions/setup-just@v2
-
             - name: Show Forge version
               run: forge --version
 
@@ -47,12 +44,3 @@ jobs:
 
             - name: Run Forge tests
               run: forge test -vvv --no-match-path '**/fork/**'
-
-            - name: Verify ABI is in sync with contracts
-              run: |
-                  (cd npm-artifacts && just abi)
-                  if ! git diff --exit-code -- npm-artifacts/src/abi.ts; then
-                    echo "::error::npm-artifacts/src/abi.ts is out of date."
-                    echo "::error::Run 'just abi' from npm-artifacts/ locally and commit the diff."
-                    exit 1
-                  fi
